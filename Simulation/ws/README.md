@@ -1,5 +1,24 @@
 # **项目部署指南**
 
+## **依赖安装**
+```bash
+sudo apt-get install ros-noetic-gazebo-ros-pkgs \
+ros-noetic-gazebo-ros-control \
+ros-noetic-navigation \
+ros-noetic-move-base \
+ros-noetic-amcl \
+ros-noetic-gmapping \
+ros-noetic-map-server
+```
+鱼香ros一键安装必要的ROS包：
+```bash
+通过终端输入：wget http://fishros.com/install -O fishros && . fishros
+选择并安装：rosdepc
+然后一键安装需要用的库
+cd ~/ws
+rosdepc update
+rosdepc install --from-paths src --ignore-src -r -y
+```
 ## **编译步骤**
 
 ### **1. 编译Livox-SDK2**
@@ -67,24 +86,4 @@ roslaunch robot nav.launch
 如果遇到权限问题，运行：
 ```bash
 chmod +x ~/ws/src/livox_ros_driver2/build.sh
-```
-
-### **依赖安装**
-```bash
-sudo apt-get install ros-noetic-gazebo-ros-pkgs \
-ros-noetic-gazebo-ros-control \
-ros-noetic-navigation \
-ros-noetic-move-base \
-ros-noetic-amcl \
-ros-noetic-gmapping \
-ros-noetic-map-server
-```
-鱼香ros一键安装必要的ROS包：
-```bash
-通过终端输入：wget http://fishros.com/install -O fishros && . fishros
-选择并安装：rosdepc
-然后一键安装需要用的库
-cd ~/ws
-rosdepc update
-rosdepc install --from-paths src --ignore-src -r -y
 ```
