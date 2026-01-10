@@ -1,7 +1,7 @@
-#安徽大学Supremacy战队哨兵机器人自主导航项目
+### 安徽大学Supremacy战队哨兵机器人自主导航项目
+- Simulation：仿真验证
 
-#Reality：真机导航项目文件夹
+- Reality：真机部署
 
-#Simulation：仿真项目文件夹
+- slam流程图：实现流程
 
-#slam流程图：导航项目实现的流程图
