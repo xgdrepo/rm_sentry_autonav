@@ -1,0 +1,72 @@
+<launch>
+  <!-- <include
+    file="$(find gazebo_ros)/launch/empty_world.launch" /> -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robot)/world/arena.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+  </include>
+
+  <!-- <node
+    name="tf_footprint_base"
+    pkg="tf"
+    type="static_transform_publisher"
+    args="0 0 0 0 0 0 base_link base_footprint 10" />
+     -->
+  
+  <node
+    name="tf_base_lidar"
+    pkg="tf"
+    type="static_transform_publisher"
+    args="-0.046164 -0.20002 0.16926  0 3.1415 0 /base_link /lidar_link 40" />
+   
+  <!-- <node pkg="tf" 
+        type="static_transform_publisher" 
+        name="livox_tf_publisher"
+        args="-0.046164 -0.20002 0.16926  0 3.1415 0  /base_link  /lidar_link  10" /> -->
+
+  <node
+    name="spawn_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x 0 -y 0 -z 0.3 -R 0 -P 0 -Y 0"
+    output="screen" />
+
+  <!-- <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen" > -->
+  <!-- </node> -->
+    <!-- 启动点云变换节点 -->
+    <!-- <node pkg="robot" type="transform_cloud_node" name="cloud_transformer" output="screen">
+        <param name="target_frame" value="robot::base_link" />
+        <param name="use_tf_time" value="true" />
+        <remap from="/velodyne_points" to="/livox/lidar" />
+        <remap from="/points_transformed" to="/livox/lidar/horizontal" />
+    </node> -->
+
+    <!-- 
+    将 Livox 水平点云转换为激光扫描数据
+    订阅: /livox/lidar/horizontal
+    发布: /scan
+    -->
+    
+
+    <!-- run pointcloud_to_laserscan node -->
+    <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+        <remap from="cloud_in" to="/livox/lidar"/>
+        <remap from="scan" to="/scan"/>
+        <rosparam>
+            target_frame: lidar_link
+            transform_tolerance: 0.001
+            min_height: -1
+            max_height: 0.3
+            angle_min: -3.1415926 # -M_PI
+            angle_max: 3.1415926 # M_PI
+            angle_increment: 0.005 # 0.17degree
+            scan_time: 0.1
+            range_min: 0.5
+            range_max: 20
+            use_inf: true
+            concurrency_level: 1
+        </rosparam>
+    </node>
+
+</launch>
