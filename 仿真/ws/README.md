@@ -70,6 +70,20 @@ source devel/setup.sh
 roslaunch robot mapping.launch
 ```
 
+### **终端3：启动控制**
+```bash
+rosrun teleop_twist_keyboard teleop_twist_keyboard.py
+```
+
+### **终端4：启动rviz,并订阅map话题实时显示建图过程**
+```bash
+rviz
+```
+### **终端5：建图完成，保存地图**
+```bash
+rosrun map_server map_saver
+```
+
 ## **导航流程**
 
 ### **单终端启动导航**
