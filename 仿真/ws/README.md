@@ -8,7 +8,9 @@ ros-noetic-navigation \
 ros-noetic-move-base \
 ros-noetic-amcl \
 ros-noetic-gmapping \
-ros-noetic-map-server
+ros-noetic-map-server \
+ros-noetic-teleop-twist-keyboard \
+ros-noetic-pointcloud-to-laserscan
 ```
 鱼香ros一键安装必要的ROS包：
 ```bash
