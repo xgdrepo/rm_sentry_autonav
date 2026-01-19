@@ -4,7 +4,7 @@
     <node pkg="serial_com" type="serial_com" name="serial_com" output="screen">
         <!-- 参数设置 -->
         <param name="cmd_vel_topic" type="string" value="/cmd_vel" />
-        <param name="serial_port" type="string" value="/dev/pts/2" />
+        <param name="serial_port" type="string" value="/dev/pts/5" />
         
         <!-- ROS参数服务器设置 -->
         <rosparam>

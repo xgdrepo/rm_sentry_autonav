@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+
   <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping">
       <!-- 激光范围设置 -->
       <param name="maxRange" value="50.0"/>
@@ -16,7 +17,7 @@
       <param name="lskip" value="1"/>  <!-- 非常重要！从2094点降到约349点 -->
       <param name="particles" value="30"/>
       <param name="minimumScore" value="0.0"/>  <!-- 避免大空间中的跳变 -->
-      <param name="occ_thresh " value="0.1"/>
+      <param name="occ_thresh " value="0.01"/>
       
       <!-- 更新频率控制 -->
       <param name="linearUpdate" value="-1"/>   <!-- 每移动0.5米更新（默认1.0） -->

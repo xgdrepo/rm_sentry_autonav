@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="pure_pursuit_controller" type="pure_pursuit_controller" name="pure_pursuit" output="screen">
+        <rosparam file="$(find pure_pursuit_controller)/config/pure_pursuit_params.yaml" command="load"/>
+        <remap from="/move_base/NavfnROS/plan" to="/move_base/NavfnROS/plan"/>
+        <remap from="/odom" to="/odom1"/>
+        <remap from="/cmd_vel1" to="/cmd_vel1"/>
+    </node>
+</launch>

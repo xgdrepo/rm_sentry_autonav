@@ -1,0 +1,9 @@
+# Pure Pursuit 参数
+lookahead_distance: 0.01      # 前视距离 (m)
+linear_velocity: 0.3         # 线速度 (m/s)
+max_linear_vel: 0.5          # 最大线速度
+min_linear_vel: 0.0          # 最小线速度
+max_angular_vel: 1.0         # 最大角速度 (rad/s)
+wheel_base: 0.3              # 轴距，0表示差速机器人
+goal_tolerance: 0.1          # 目标容差 (m)
+use_fixed_velocity: true     # 是否使用固定速度

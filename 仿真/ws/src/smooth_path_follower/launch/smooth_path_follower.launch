@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="smooth_path_follower" type="smooth_path_follower" name="smooth_path_follower" output="screen">
+        <!-- 加载参数 -->
+        <rosparam command="load" file="$(find smooth_path_follower)/config/params.yaml" />
+        
+        <!-- 话题重映射 -->
+        <remap from="/amcl_pose" to="/amcl_pose" />
+        <remap from="/move_base/NavfnROS/plan" to="/move_base/NavfnROS/plan" />
+        <remap from="/cmd_vel1" to="/cmd_vel1" />
+    </node>
+</launch>

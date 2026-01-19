@@ -23,6 +23,7 @@
     type="spawn_model"
     args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x 0 -y 0 -z 0.3 -R 0 -P 0 -Y 0"
     output="screen" />
+    <!-- args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x -5.25 -y 3 -z 0.3 -R 0 -P 0 -Y 0" -->
 
     <!-- run pointcloud_to_laserscan node -->
     <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
@@ -56,6 +57,7 @@
         <rosparam file="$(find robot)/param/base_local_planner_params.yaml" command="load" />
         <remap from="odom" to="odom1" /> 
     </node>
+
 
 </launch>
 

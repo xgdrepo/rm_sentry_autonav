@@ -33,6 +33,8 @@ minicom -D /dev/pts/3 -b 115200
 
 ## 终端6：发送测试数据
 ```bash
-# 发送血量数据：0xA6 0x64 0xC2
+# 发送血量数据HP：100
 echo -e -n '\xA6\x64\xC2' > /dev/pts/3
+# 发送血量数据HP：8
+echo -e -n '\xA6\x08\xAE' > /dev/pts/3
 ```

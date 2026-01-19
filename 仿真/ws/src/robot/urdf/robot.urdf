@@ -346,7 +346,7 @@
       <wheelDiameter>0.075</wheelDiameter>      <!-- 根据你的机器人调整 -->
       
       <!-- 轮子加速度限制 -->
-      <wheelAcceleration>5</wheelAcceleration>
+      <wheelAcceleration>20</wheelAcceleration>
 
       <!-- 关键：设置轮子扭矩（减小这个值避免过度驱动） -->
       <wheelTorque>5.0</wheelTorque> <!-- 从默认5.0减小 -->
@@ -381,7 +381,7 @@
       <wheelDiameter>0.075</wheelDiameter>      <!-- 根据你的机器人调整 -->
       
       <!-- 轮子加速度限制 -->
-      <wheelAcceleration>5</wheelAcceleration>
+      <wheelAcceleration>20</wheelAcceleration>
 
       <!-- 关键：设置轮子扭矩（减小这个值避免过度驱动） -->
       <wheelTorque>5.0</wheelTorque> <!-- 从默认5.0减小 -->

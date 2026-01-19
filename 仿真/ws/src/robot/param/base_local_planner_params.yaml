@@ -43,11 +43,11 @@ TebLocalPlannerROS:
   publish_feedback: False
 
   # Robot
-  max_vel_x: 2
-  max_vel_x_backwards: 2
-  max_vel_theta: 5
+  max_vel_x: 1
+  max_vel_x_backwards: 1
+  max_vel_theta: 100
   acc_lim_x: 1
-  acc_lim_theta: 3
+  acc_lim_theta: 100
 
   #仅适用于全向轮
   # max_vel_y (double, default: 0.0)  
@@ -73,7 +73,7 @@ TebLocalPlannerROS:
   # GoalTolerance
       
   xy_goal_tolerance: 0.2
-  yaw_goal_tolerance: 0.1
+  yaw_goal_tolerance: 0.2
   free_goal_vel: False
   # complete_global_plan: True   
   # Obstacles
@@ -94,12 +94,12 @@ TebLocalPlannerROS:
   optimization_verbose: False
   penalty_epsilon: 0.1
   weight_max_vel_x: 1
-  weight_max_vel_theta: 3
+  weight_max_vel_theta: 250
   weight_acc_lim_x: 1
-  weight_acc_lim_theta: 1
+  weight_acc_lim_theta: 250
   weight_kinematics_nh: 1000
   weight_kinematics_forward_drive: 1
-  weight_kinematics_turning_radius: 1
+  weight_kinematics_turning_radius: 250
   weight_optimaltime: 1
   weight_obstacle: 50
   weight_dynamic_obstacle: 10 # not in use yet
