@@ -325,77 +325,22 @@
     <material>Gazebo/Black</material>
   </gazebo>
 
-  <!-- 控制器 -->
- <!-- 差分驱动控制器插件 -->
+
+
+  <!-- 麦轮控制器 -->
   <gazebo>
-    <plugin name="differential_drive_controller" filename="libgazebo_ros_diff_drive.so">
-      <!-- 发布频率 -->
-      <updateRate>10</updateRate>
-      
-      <!-- 机器人命名空间 -->
-      <robotNamespace>/</robotNamespace>
-      
-      <!-- 左右轮关节名称（根据你的URDF修改） -->
-      <leftJoint>wheel_joint4</leftJoint>
-      <rightJoint>wheel_joint1</rightJoint>
-      
-      <!-- 轮子间距（两个轮子中心之间的距离，单位：米） -->
-      <wheelSeparation>0.55</wheelSeparation>  <!-- 根据你的机器人调整 -->
-      
-      <!-- 轮子直径（单位：米） -->
-      <wheelDiameter>0.075</wheelDiameter>      <!-- 根据你的机器人调整 -->
-      
-      <!-- 轮子加速度限制 -->
-      <wheelAcceleration>20</wheelAcceleration>
-
-      <!-- 关键：设置轮子扭矩（减小这个值避免过度驱动） -->
-      <wheelTorque>5.0</wheelTorque> <!-- 从默认5.0减小 -->
-            
-      <commandTopic>/cmd_vel</commandTopic>
-
-      <!-- 添加缺失的参数避免警告 -->
-      <odometryTopic>/odom</odometryTopic>
-      <odometryFrame>odom</odometryFrame>
-      <robotBaseFrame>base_link</robotBaseFrame>
-      <publishWheelTF>false</publishWheelTF>
-      <publishOdomTF>true</publishOdomTF>
-      <publishWheelJointState>false</publishWheelJointState>
-    </plugin>
-  </gazebo>
-  <gazebo>
-    <plugin name="differential_drive_controller" filename="libgazebo_ros_diff_drive.so">
-      <!-- 发布频率 -->
-      <updateRate>10</updateRate>
-      
-      <!-- 机器人命名空间 -->
-      <robotNamespace></robotNamespace>
-      
-      <!-- 左右轮关节名称（根据你的URDF修改） -->
-      <leftJoint>wheel_joint3</leftJoint>
-      <rightJoint>wheel_joint2</rightJoint>
-      
-      <!-- 轮子间距（两个轮子中心之间的距离，单位：米） -->
-      <wheelSeparation>0.55</wheelSeparation>  <!-- 根据你的机器人调整 -->
-      
-      <!-- 轮子直径（单位：米） -->
-      <wheelDiameter>0.075</wheelDiameter>      <!-- 根据你的机器人调整 -->
-      
-      <!-- 轮子加速度限制 -->
-      <wheelAcceleration>20</wheelAcceleration>
-
-      <!-- 关键：设置轮子扭矩（减小这个值避免过度驱动） -->
-      <wheelTorque>5.0</wheelTorque> <!-- 从默认5.0减小 -->
-            
-      <commandTopic>/cmd_vel</commandTopic>
-      
-      <!-- 添加缺失的参数避免警告 -->
-      <odometryTopic>/odom2</odometryTopic>
-      <odometryFrame>odom2</odometryFrame>
-      <robotBaseFrame>base_link</robotBaseFrame>
-      <publishWheelTF>false</publishWheelTF>
-      <publishOdomTF>false</publishOdomTF>
-      <publishWheelJointState>false</publishWheelJointState>
-    </plugin>
+      <plugin name="mecanum_controller" filename="libgazebo_ros_planar_move.so">
+          <commandTopic>cmd_vel1</commandTopic>
+          <odometryTopic>odom</odometryTopic>
+          <odometryFrame>odom</odometryFrame>
+          <leftFrontJoint>wheel_joint4</leftFrontJoint>
+          <rightFrontJoint>wheel_joint1</rightFrontJoint>
+          <leftRearJoint>wheel_joint3</leftRearJoint>
+          <rightRearJoint>wheel_joint2</rightRearJoint>
+          <odometryRate>100</odometryRate>
+          <robotBaseFrame>base_link</robotBaseFrame>
+          <broadcastTF>1</broadcastTF>
+      </plugin>
   </gazebo>
   <gazebo reference="lidar_link">
 

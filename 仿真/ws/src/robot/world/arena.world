@@ -1,11 +1,18 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
   <world name="3v3_arena_world">
-    <!-- 光源 -->
+
+    <!-- 在.world文件中添加这些 -->
+    <!-- 1. 太阳光（方向光源） -->
     <include>
       <uri>model://sun</uri>
     </include>
 
+    <scene>
+      <ambient>0.8 0.8 0.8 1</ambient>  <!-- 增加环境光 -->
+      <background>0.7 0.7 0.7 1</background>  <!-- 增加背景亮度 -->
+    </scene>
+    
     <!-- 1. 场地底板（12m×8m，中心对齐Gazebo原点） -->
     <model name="arena_floor">
       <static>true</static>

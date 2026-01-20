@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-  INCLUDE_DIRS include
+
   LIBRARIES imu_to_odom
   CATKIN_DEPENDS roscpp sensor_msgs nav_msgs tf2 tf2_ros
 )

@@ -37,7 +37,7 @@
             angle_min: -3.1415926 # -M_PI
             angle_max: 3.1415926 # M_PI
             angle_increment: 0.005 # 0.17degree
-            scan_time: 0.1
+            scan_time: 0.01
             range_min: 0.5
             range_max: 20
             use_inf: true
@@ -58,6 +58,26 @@
         <remap from="odom" to="odom1" /> 
     </node>
 
+    <node name="path_follower" pkg="path_follower" type="path_follower_node" output="screen">
+        <!-- 控制参数 -->
+        <param name="control_frequency" value="10.0"/>   <!-- 控制频率(Hz) -->
+        <param name="control_gain" value="3"/>        <!-- 控制增益 -->
+        
+        <!-- 路径跟踪参数 -->
+        <param name="target_distance" value="0.1"/>     <!-- 目标点距离(m)，增加距离使控制更平滑 -->
+        <param name="stop_threshold" value="0.05"/>     <!-- 停止阈值(m) -->
+        
+        <!-- 速度限制 -->
+        <param name="max_linear_speed" value="2.5"/>    <!-- 最大线速度(m/s) -->
+        
+        <!-- 坐标系设置 -->
+        <param name="global_frame" value="map"/>        <!-- 全局坐标系 -->
+        <param name="robot_frame" value="base_link"/>   <!-- 机器人坐标系 -->
+        
+        <!-- 话题重映射 -->
+        <remap from="path" to="/move_base/NavfnROS/plan"/>
+        <remap from="pose" to="/amcl_pose"/>
+        <remap from="cmd_vel1" to="/cmd_vel1"/>
+    </node>
 
 </launch>
-
