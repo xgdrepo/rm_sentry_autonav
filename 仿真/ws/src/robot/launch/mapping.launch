@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <launch>
 
+  <include file="$(find robot)/launch/gazebo.launch" />
+
   <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping">
       <!-- 激光范围设置 -->
       <param name="maxRange" value="50.0"/>
@@ -17,12 +19,12 @@
       <param name="lskip" value="1"/>  <!-- 非常重要！从2094点降到约349点 -->
       <param name="particles" value="30"/>
       <param name="minimumScore" value="0.0"/>  <!-- 避免大空间中的跳变 -->
-      <param name="occ_thresh " value="0.01"/>
+      <param name="occ_thresh " value="0"/>
       
       <!-- 更新频率控制 -->
       <param name="linearUpdate" value="-1"/>   <!-- 每移动0.5米更新（默认1.0） -->
       <param name="angularUpdate" value="-1"/>  <!-- 每旋转0.3弧度更新（默认0.5） -->
-      <param name="temporalUpdate" value="0.1"/> <!-- 时间更新间隔 -->
+      <param name="temporalUpdate" value="0.01"/> <!-- 时间更新间隔 -->
       
       <!-- 地图参数 -->
       <param name="delta" value="0.05"/>
@@ -38,5 +40,8 @@
       
       <remap from="scan" to="/scan"/>
   </node>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robot)/rviz/mapping.rviz"/>
   
+
 </launch>

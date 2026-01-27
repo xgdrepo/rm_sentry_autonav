@@ -8,9 +8,10 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   roslib
   tf
-  livox_ros_driver2
+  
 )
-
+# 单独查找 livox_ros_driver2，但不生成消息
+find_package(livox_ros_driver2 REQUIRED)
 find_package(gazebo REQUIRED)
 find_package(PCL REQUIRED)
 include_directories(
@@ -18,6 +19,7 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
     ${GAZEBO_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
+    ${livox_ros_driver2_INCLUDE_DIRS}  # 添加这一行
 )
 
 find_package(OpenMP)
@@ -28,9 +30,9 @@ if (OPENMP_FOUND)
 endif()
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(DEPENDENCIES
-	std_msgs
-)
+#generate_messages(DEPENDENCIES
+#	std_msgs
+#)
 
 #To solve the error which gazebo does not handle the include file well, we must add this line.
 # include_directories(/usr/include/gazebo-7/gazebo)
@@ -48,5 +50,5 @@ catkin_package(
 )
 
 add_library(livox_laser_simulation SHARED src/livox_points_plugin.cpp src/livox_ode_multiray_shape.cpp)
-target_link_libraries(livox_laser_simulation ${catkin_LIBRARIES} RayPlugin)
+target_link_libraries(livox_laser_simulation ${catkin_LIBRARIES} RayPlugin ${livox_ros_driver2_LIBRARIES})
 target_link_libraries(livox_laser_simulation libprotobuf.so.9)

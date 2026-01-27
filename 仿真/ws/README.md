@@ -1,6 +1,11 @@
-# **项目部署指南**
+## **安装**
 
-## **依赖安装**
+鱼香ros一键安装ROS：
+```bash
+wget http://fishros.com/install -O fishros && . fishros
+安装 noetic 桌面版
+```
+安装需要用到的ros依赖
 ```bash
 sudo apt-get install ros-noetic-gazebo-ros-pkgs \
 ros-noetic-gazebo-ros-control \
@@ -12,15 +17,7 @@ ros-noetic-map-server \
 ros-noetic-serial \
 ros-noetic-pointcloud-to-laserscan
 ```
-鱼香ros一键安装必要的ROS包：
-```bash
-通过终端输入：wget http://fishros.com/install -O fishros && . fishros
-选择并安装：rosdepc
-然后一键安装需要用的库
-cd ~/ws
-rosdepc update
-rosdepc install --from-paths src --ignore-src -r -y
-```
+
 ## **编译步骤**
 
 ### **1. 编译Livox-SDK2**
@@ -33,73 +30,52 @@ cmake .. && make -j
 sudo make install
 ```
 
-### **2. 编译livox_ros_driver2**
+### **2. 编译src中的功能包**
 ```bash
-# 将livox_laser_simulation从src移动到ws根目录
-mv ~/ws/src/livox_laser_simulation ~/ws/
-
-# 编译驱动
+chmod +x ~/ws/src/livox_ros_driver2/build.sh
 cd ~/ws/src/livox_ros_driver2
 source /opt/ros/noetic/setup.sh
 ./build.sh ROS1
 ```
 
-### **3. 编译livox_laser_simulation**
-```bash
-# 将livox_ros_driver2从src移动到ws根目录,再把livox_laser_simulation移动回来
-mv ~/ws/src/livox_ros_driver2 ~/ws/
-mv ~/ws/livox_laser_simulation ~/ws/src/
-
-# 编译整个工作空间
-cd ~/ws
-source /opt/ros/noetic/setup.sh
-catkin_make
-```
-
 ## **建图流程**
 
-### **终端1：启动Gazebo仿真**
-```bash
-cd ~/ws
-source devel/setup.sh
-roslaunch robot gazebo.launch
-```
-
-### **终端2：启动建图**
+### **终端1：启动建图**
 ```bash
 cd ~/ws
 source devel/setup.sh
 roslaunch robot mapping.launch
 ```
 
-### **终端3：启动控制**
+### **终端2：启动cmd_vel控制**
 ```bash
-rosrun teleop_twist_keyboard teleop_twist_keyboard.py
+rosrun teleop_twist_keyboard teleop_twist_keyboard.py cmd_vel:=/cmd_vel1
 ```
 
-### **终端4：启动rviz,并订阅map话题实时显示建图过程**
+### **终端3：建图完成，保存地图**
 ```bash
-rviz
-```
-### **终端5：建图完成，保存地图**
-```bash
-rosrun map_server map_saver
+rosrun map_server map_saver -f map
 ```
 
 ## **导航流程**
-
-### **单终端启动导航**
+### **终端1：开启导航**
 ```bash
-cd ~/ws
-source devel/setup.sh
 roslaunch robot nav.launch
 ```
+### **终端2：开启虚拟串口**
 
-## **注意事项**
-
-
-### **文件权限问题**
-如果遇到权限问题，运行：
 ```bash
-chmod +x ~/ws/src/livox_ros_driver2/build.sh
+socat -d -d pty,raw,echo=0 pty,raw,echo=0
+```
+### **修改serial_com.launch中/dev/pts/*参数**
+
+
+### **终端3：输入血量**
+```bash
+血量 100 去增益区站点
+echo -n -e "\xFA\xFB\x41\x01\x64\xF9\x12" > /dev/pts/*
+```
+```bash
+血量 5 会补给区补血
+echo -n -e "\xFA\xFB\x41\x01\x05\x85\x95" > /dev/pts/*
 ```

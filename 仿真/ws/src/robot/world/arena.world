@@ -55,10 +55,10 @@
       <!-- 底部长边 -->
       <link name="border_long1">
         <collision name="col">
-          <geometry><box><size>12 0.1 2</size></box></geometry>
+          <geometry><box><size>12 0.1 1</size></box></geometry>
         </collision>
         <visual name="vis">
-          <geometry><box><size>12 0.1 2</size></box></geometry>
+          <geometry><box><size>12 0.1 1</size></box></geometry>
           <material><script><name>Gazebo/Black</name></script></material>
         </visual>
         <pose>0 -4.05 0.1 0 0 0</pose>
@@ -66,10 +66,10 @@
       <!-- 顶部长边 -->
       <link name="border_long2">
         <collision name="col">
-          <geometry><box><size>12 0.1 2</size></box></geometry>
+          <geometry><box><size>12 0.1 1</size></box></geometry>
         </collision>
         <visual name="vis">
-          <geometry><box><size>12 0.1 2</size></box></geometry>
+          <geometry><box><size>12 0.1 1</size></box></geometry>
           <material><script><name>Gazebo/Black</name></script></material>
         </visual>
         <pose>0 4.05 0.1 0 0 0</pose>
@@ -77,10 +77,10 @@
       <!-- 左侧短边 -->
       <link name="border_short1">
         <collision name="col">
-          <geometry><box><size>0.1 8 2</size></box></geometry>
+          <geometry><box><size>0.1 8 1</size></box></geometry>
         </collision>
         <visual name="vis">
-          <geometry><box><size>0.1 8 2</size></box></geometry>
+          <geometry><box><size>0.1 8 1</size></box></geometry>
           <material><script><name>Gazebo/Black</name></script></material>
         </visual>
         <pose>-6.05 0 0.1 0 0 0</pose>
@@ -88,10 +88,10 @@
       <!-- 右侧短边 -->
       <link name="border_short2">
         <collision name="col">
-          <geometry><box><size>0.1 8 2</size></box></geometry>
+          <geometry><box><size>0.1 8 1</size></box></geometry>
         </collision>
         <visual name="vis">
-          <geometry><box><size>0.1 8 2</size></box></geometry>
+          <geometry><box><size>0.1 8 1</size></box></geometry>
           <material><script><name>Gazebo/Black</name></script></material>
         </visual>
         <pose>6.05 0 0.1 0 0 0</pose>
@@ -137,16 +137,16 @@
     <!-- 左侧高地 -->
     <model name="highland_left">
       <static>true</static>
-      <!-- 底部主平台（2m×6.5m×0.2m） -->
+      <!-- 底部主平台（2m×5m×0.2m） -->
       <link name="main_platform">
         <collision name="col">
-          <geometry><box><size>2 6.5 0.2</size></box></geometry>
+          <geometry><box><size>2 5 0.2</size></box></geometry>
         </collision>
         <visual name="vis">
-          <geometry><box><size>2 6.5 0.2</size></box></geometry>
+          <geometry><box><size>2 5 0.2</size></box></geometry>
           <material><script><name>Gazebo/LightGrey</name></script></material>
         </visual>
-        <pose>-3 0.75 0.1 0 0 0</pose>
+        <pose>-2.5 1.5 0.1 0 0 0</pose>
       </link>
       <!-- 顶部凸台（2m×0.2m×0.2m，与控制区衔接） -->
       <link name="top_bump">
@@ -157,14 +157,9 @@
           <geometry><box><size>0.15 1.8 0.2</size></box></geometry>
           <material><script><name>Gazebo/LightGrey</name></script></material>
         </visual>
-        <pose>-2.075 0.75 0.3 0 0 0</pose> <!-- 凸台右移，与控制区左边缘贴合 -->
+        <pose>-1.575 0.8 0.3 0 0 0</pose> <!-- 凸台右移，与控制区左边缘贴合 -->
       </link>
-      <!-- 固定连接主平台与凸台 -->
-      <joint name="platform_to_bump" type="fixed">
-        <parent>main_platform</parent>
-        <child>top_bump</child>
-        <pose>0 0 0 0 0 0</pose>
-      </joint>
+
     </model>
     <!-- 右侧高地 -->
     <model name="highland_right">
@@ -172,13 +167,13 @@
       <!-- 底部主平台 -->
       <link name="main_platform">
         <collision name="col">
-          <geometry><box><size>2 6.5 0.2</size></box></geometry>
+          <geometry><box><size>2 5 0.2</size></box></geometry>
         </collision>
         <visual name="vis">
-          <geometry><box><size>2 6.5 0.2</size></box></geometry>
+          <geometry><box><size>2 5 0.2</size></box></geometry>
           <material><script><name>Gazebo/LightGrey</name></script></material>
         </visual>
-        <pose>3 -0.75 0.1 0 0 0</pose>
+        <pose>2.5 -1.5 0.1 0 0 0</pose>
       </link>
       <!-- 顶部凸台（与控制区衔接） -->
       <link name="top_bump">
@@ -189,14 +184,9 @@
           <geometry><box><size>0.15 1.8 0.2</size></box></geometry>
           <material><script><name>Gazebo/LightGrey</name></script></material>
         </visual>
-        <pose>2.075 -0.75 0.3 0 0 0</pose> <!-- 凸台左移，与控制区右边缘贴合 -->
+        <pose>1.575 -0.8 0.3 0 0 0</pose> <!-- 凸台左移，与控制区右边缘贴合 -->
       </link>
-      <!-- 固定连接 -->
-      <joint name="platform_to_bump" type="fixed">
-        <parent>main_platform</parent>
-        <child>top_bump</child>
-        <pose>0 0 0 0 0 0</pose>
-      </joint>
+
     </model>
 
     <!-- 5. 控制区（绿双剑，与高地凸台衔接） -->

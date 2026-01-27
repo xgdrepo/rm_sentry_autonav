@@ -43,7 +43,7 @@ private:
         path_received_ = true;
         new_path_received_ = true;  // 标记收到新路径
         last_target_idx_ = 0;       // 重置目标点索引
-        ROS_INFO("Received new path with %zu points", msg->poses.size());
+        // ROS_INFO("Received new path with %zu points", msg->poses.size());
     }
     
     void poseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
@@ -75,7 +75,7 @@ private:
                     last_target_idx_ = i;
                 }
             }
-            ROS_INFO("Starting from waypoint %d, distance: %.3f", last_target_idx_, min_dist);
+            // ROS_INFO("Starting from waypoint %d, distance: %.3f", last_target_idx_, min_dist);
         }
         
         // 确保索引在有效范围内
@@ -101,7 +101,7 @@ private:
                 // 更新目标点索引，但不要超过当前点
                 last_target_idx_ = i;
                 
-                ROS_DEBUG("Target point at index %d, accumulated: %.3f", i, accumulated_dist);
+                // ROS_DEBUG("Target point at index %d, accumulated: %.3f", i, accumulated_dist);
                 return target_pose;
             }
             accumulated_dist += segment_dist;
@@ -121,8 +121,8 @@ private:
                 point_out = tf_buffer_.transform(point_in, robot_frame_);
                 return true;
             } else {
-                ROS_WARN_THROTTLE(1.0, "Cannot transform from %s to %s", 
-                                point_in.header.frame_id.c_str(), robot_frame_.c_str());
+                // ROS_WARN_THROTTLE(1.0, "Cannot transform from %s to %s", 
+                //                 point_in.header.frame_id.c_str(), robot_frame_.c_str());
                 return false;
             }
         } catch (tf2::TransformException &ex) {
@@ -190,23 +190,23 @@ private:
                         if (final_dist < stop_threshold_) {
                             cmd_vel.linear.x = 0.0;
                             cmd_vel.linear.y = 0.0;
-                            ROS_INFO("Reached final destination! Distance: %.3f", final_dist);
+                            // ROS_INFO("Reached final destination! Distance: %.3f", final_dist);
                         }
                         // 接近终点，减速
                         else if (final_dist < stop_threshold_ * 3.0) {
                             double scale = std::min(1.0, final_dist / (stop_threshold_ * 3.0));
                             cmd_vel.linear.x *= scale;
                             cmd_vel.linear.y *= scale;
-                            ROS_DEBUG_THROTTLE(0.5, "Approaching final point, slowing down. Distance: %.3f", final_dist);
+                            // ROS_DEBUG_THROTTLE(0.5, "Approaching final point, slowing down. Distance: %.3f", final_dist);
                         }
                     }
                 }
                 
                 // 调试输出
-                ROS_DEBUG_THROTTLE(0.5, "Target: dx=%.3f, dy=%.3f, dist=%.3f, vel=(%.3f,%.3f)", 
-                                dx_local, dy_local, distance, cmd_vel.linear.x, cmd_vel.linear.y);
+                // ROS_DEBUG_THROTTLE(0.5, "Target: dx=%.3f, dy=%.3f, dist=%.3f, vel=(%.3f,%.3f)", 
+                //                 dx_local, dy_local, distance, cmd_vel.linear.x, cmd_vel.linear.y);
             } else {
-                ROS_DEBUG_THROTTLE(0.5, "Reached target point. Distance: %.3f", distance);
+                // ROS_DEBUG_THROTTLE(0.5, "Reached target point. Distance: %.3f", distance);
                 
                 // 如果当前目标点已经到达，检查是否到达终点
                 if (last_target_idx_ >= current_path_.poses.size() - 1) {
@@ -221,13 +221,13 @@ private:
                                                 final_point_robot.point.y * final_point_robot.point.y);
                         
                         if (final_dist < stop_threshold_) {
-                            ROS_INFO("Path following completed!");
+                            // ROS_INFO("Path following completed!");
                         }
                     }
                 }
             }
         } else {
-            ROS_WARN_THROTTLE(1.0, "Failed to transform target point to robot frame");
+            // ROS_WARN_THROTTLE(1.0, "Failed to transform target point to robot frame");
             // 如果TF变换失败，使用原来的方法作为备选
             double robot_yaw = 0.0;
             try {
@@ -261,7 +261,7 @@ private:
                     }
                 }
             } catch (...) {
-                ROS_ERROR_THROTTLE(1.0, "Failed to calculate fallback control");
+                // ROS_ERROR_THROTTLE(1.0, "Failed to calculate fallback control");
             }
         }
         
@@ -298,11 +298,11 @@ public:
         pose_sub_ = nh_.subscribe("pose", 1, &PathFollower::poseCallback, this);
         cmd_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel1", 1);
         
-        ROS_INFO("Path Follower initialized with waypoint tracking");
-        ROS_INFO("Parameters: target_distance=%.3fm, control_gain=%.2f", target_distance_, control_gain_);
-        ROS_INFO("Parameters: stop_threshold=%.3fm, max_linear_speed=%.2fm/s", stop_threshold_, max_linear_speed_);
-        ROS_INFO("Frames: global=%s, robot=%s", global_frame_.c_str(), robot_frame_.c_str());
-        ROS_INFO("Control frequency: %.0f Hz", control_frequency_);
+        // ROS_INFO("Path Follower initialized with waypoint tracking");
+        // ROS_INFO("Parameters: target_distance=%.3fm, control_gain=%.2f", target_distance_, control_gain_);
+        // ROS_INFO("Parameters: stop_threshold=%.3fm, max_linear_speed=%.2fm/s", stop_threshold_, max_linear_speed_);
+        // ROS_INFO("Frames: global=%s, robot=%s", global_frame_.c_str(), robot_frame_.c_str());
+        // ROS_INFO("Control frequency: %.0f Hz", control_frequency_);
     }
     
     void run() {

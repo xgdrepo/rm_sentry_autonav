@@ -36,24 +36,16 @@ struct RadarRecvFrame {
 };
 #pragma pack(pop)
 
-
-/**
- * @brief CRC16-CCITT 校验计算 (多项式: 0x1021, 初始值: 0xFFFF)
- *        校验范围：从 CMD_ID 开始，直到 Payload 数据结束。不包含开头的 0xFA 0xFB 帧起始位。
- * @param data 指向待校验数据的指针
- * @param len  待校验数据的字节长度
- * @return uint16_t 计算得到的校验值
- */
-inline uint16_t crc16_ccitt(const uint8_t* data, size_t len) {
-    uint16_t crc = 0xFFFF; // 初始值
+// CRC16-CCITT (0x1021) 实现
+uint16_t crc16_ccitt(const uint8_t* data, size_t len) {
+    uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < len; ++i) {
         crc ^= (uint16_t)data[i] << 8;
         for (int j = 0; j < 8; ++j) {
-            if (crc & 0x8000) {
-                crc = (crc << 1) ^ 0x1021; // 多项式 0x1021
-            } else {
+            if (crc & 0x8000)
+                crc = (crc << 1) ^ 0x1021;
+            else
                 crc <<= 1;
-            }
         }
     }
     return crc;
@@ -98,25 +90,14 @@ void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg)
     frame.linear_y = msg->linear.y;
     frame.angular_z = msg->angular.z;
     frame.spin_mode = current_spin_mode;
-    
-    // 计算CRC：从cmd_id开始，到spin_mode结束（不包含crc16字段自身）
-    size_t crc_len = sizeof(frame.header.cmd_id) + sizeof(frame.header.data_len) + 
-                     sizeof(frame.linear_x) + sizeof(frame.linear_y) + 
-                     sizeof(frame.angular_z) + sizeof(frame.spin_mode);
-    
-    // 计算CRC
-    uint16_t crc_value = crc16_ccitt(reinterpret_cast<uint8_t*>(&frame.header.cmd_id), crc_len);
-    
-    // 以小端序存储CRC（低位在前，高位在后）
-    frame.crc16 = (crc_value & 0xFF) << 8 | (crc_value >> 8);
+    frame.crc16 = crc16_ccitt(reinterpret_cast<uint8_t*>(&frame), sizeof(RadarSendFrame) - sizeof(frame.crc16));
 
     try {
         if (sentry_ser.isOpen()) {
             sentry_ser.flush();
             size_t bytes_written = sentry_ser.write(reinterpret_cast<uint8_t*>(&frame), sizeof(RadarSendFrame));
             if (bytes_written == sizeof(RadarSendFrame)) {
-                ROS_INFO("[TX] RadarSendFrame: linear_x=%.2f linear_y=%.2f angular_z=%.2f spin_mode=%d CRC=0x%04X", 
-                         frame.linear_x, frame.linear_y, frame.angular_z, frame.spin_mode, frame.crc16);
+                ROS_INFO("[TX] RadarSendFrame: linear_x=%.2f linear_y=%.2f angular_z=%.2f spin_mode=%d", frame.linear_x, frame.linear_y, frame.angular_z, frame.spin_mode);
             } else {
                 ROS_WARN("[TX] Only wrote %zu bytes, expected %zu", bytes_written, sizeof(RadarSendFrame));
             }
@@ -139,46 +120,25 @@ void readSerialThread()
     while (ros::ok()) {
         try {
             if (sentry_ser.isOpen() && sentry_ser.available() >= sizeof(RadarRecvFrame)) {
+                // ROS_INFO("[RX] Vision HP: ");
                 size_t bytes_read = sentry_ser.read(buffer, sizeof(RadarRecvFrame));
-                
+                // ROS_INFO("%d",bytes_read == sizeof(RadarRecvFrame));
                 if (bytes_read == sizeof(RadarRecvFrame)) {
+                    // ROS_INFO("111");
                     memcpy(&recv_frame, buffer, sizeof(RadarRecvFrame));
-                    
-                    // 验证帧起始位
-                    if (recv_frame.header.start1 != 0xFA || recv_frame.header.start2 != 0xFB) {
-                        ROS_WARN("[RX] Invalid start bytes: 0x%02X 0x%02X", 
-                                recv_frame.header.start1, recv_frame.header.start2);
-                        continue;
-                    }
-                    
-                    // 计算CRC：从cmd_id开始，到hp结束（不包含crc16字段自身）
-                    size_t crc_len = sizeof(recv_frame.header.cmd_id) + sizeof(recv_frame.header.data_len) + 
-                                     sizeof(recv_frame.hp);
-                    
-                    // 计算CRC
-                    uint16_t calculated_crc = crc16_ccitt(&buffer[2], crc_len); // 从第3个字节(cmd_id)开始
-                    
-                    // 将计算出的CRC转为小端序
-                    uint16_t calculated_crc_le = (calculated_crc & 0xFF) << 8 | (calculated_crc >> 8);
-                    
-                    // 将接收到的CRC转为大端序用于比较
-                    uint16_t received_crc = recv_frame.crc16;
-                    ROS_INFO("calculated_crc%04X calculated_crc_le%04X received_crc%04X  crc_len%ld",calculated_crc,calculated_crc_le,received_crc,crc_len);
-                    ROS_INFO("[RX] Raw data: %02X %02X %02X %02X %02X %02X %02X", 
-                        buffer[0], buffer[1], buffer[2], buffer[3], 
-                        buffer[4], buffer[5], buffer[6]);
-                    if (recv_frame.header.cmd_id == 0x41 && calculated_crc_le == received_crc) {
+                    ROS_INFO("000");
+                    uint16_t crc = crc16_ccitt(buffer, sizeof(RadarRecvFrame) - sizeof(recv_frame.crc16));
+                    ROS_INFO("crc:%04X,recv:%04X",crc,recv_frame.crc16);
+                    if (recv_frame.header.start1 == 0xFA && recv_frame.header.start2 == 0xFB && recv_frame.header.cmd_id == 0x41 && crc == recv_frame.crc16) {
+                        ROS_INFO("222");
                         std_msgs::UInt8 hp_msg;
                         hp_msg.data = recv_frame.hp;
                         hp_pub.publish(hp_msg);
-                        ROS_INFO("[RX] Vision HP: %d CRC_OK=0x%04X", recv_frame.hp, received_crc);
+                        ROS_INFO("[RX] Vision HP: %d", recv_frame.hp);
                     } else {
-                        ROS_WARN("[RX] CRC mismatch or invalid cmd_id: cmd_id=0x%02X calc_crc=0x%04X recv_crc=0x%04X", 
-                                recv_frame.header.cmd_id, calculated_crc_le, received_crc);
+                        ROS_INFO("333");
+                        // ROS_DEBUG("[RX] Unexpected RadarRecvFrame: start1=0x%02X start2=0x%02X cmd_id=0x%02X crc=0x%04X", recv_frame.header.start1, recv_frame.header.start2, recv_frame.header.cmd_id, recv_frame.crc16);
                     }
-                } else {
-                    ROS_WARN("[RX] Incomplete frame: received %zu bytes, expected %zu", 
-                            bytes_read, sizeof(RadarRecvFrame));
                 }
             }
         } catch (serial::IOException &e) {

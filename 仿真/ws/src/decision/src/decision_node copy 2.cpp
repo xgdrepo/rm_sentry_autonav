@@ -108,7 +108,7 @@ public:
         
         // 初始化发布器
         goal_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, true);
-        spin_pub_ = nh_.advertise<std_msgs::UInt8>("/spin_mode_cmd", 10, true);  // 修改为UInt8
+        spin_pub_ = nh_.advertise<std_msgs::Bool>("/spin_mode_cmd", 10, true);
         
         // ROS_INFO("Decision Node initialized");
         // ROS_INFO("Team: %s", team_color_.c_str());
@@ -228,21 +228,20 @@ public:
         // 检查位置
         double dx = current.position.x - target.position.x;
         double dy = current.position.y - target.position.y;
-        // double dz = current.position.z - target.position.z;
-        double distance = sqrt(dx*dx + dy*dy);
+        double dz = current.position.z - target.position.z;
+        double distance = sqrt(dx*dx + dy*dy + dz*dz);
         
         // 检查朝向
-        // double current_yaw = tf::getYaw(current.orientation);
-        // double target_yaw = tf::getYaw(target.orientation);
-        // double yaw_diff = fabs(current_yaw - target_yaw);
+        double current_yaw = tf::getYaw(current.orientation);
+        double target_yaw = tf::getYaw(target.orientation);
+        double yaw_diff = fabs(current_yaw - target_yaw);
         
         // 归一化角度差到 [0, PI]
-        // if (yaw_diff > M_PI) {
-        //     yaw_diff = 2 * M_PI - yaw_diff;
-        // }
+        if (yaw_diff > M_PI) {
+            yaw_diff = 2 * M_PI - yaw_diff;
+        }
         
-        // return (distance < position_tolerance_) && (yaw_diff < orientation_tolerance_);
-        return (distance < position_tolerance_);
+        return (distance < position_tolerance_) && (yaw_diff < orientation_tolerance_);
     }
     
     // 判断两个目标是否相同
@@ -297,20 +296,20 @@ public:
             }
             
             // 如果在增益区且允许开启小陀螺
-            if (is_at_home_) {
+            if (is_at_home_ && enable_spin_at_base_ && !spin_enabled_) {
                 // ROS_INFO("At %s gain zone with full HP. Enabling spin mode...", team_color_.c_str());
-                enableSpinMode(1);  // 改为1表示开启
-                // spin_enabled_ = true;
+                enableSpinMode(true);
+                spin_enabled_ = true;
             }
         }
         // 情况2：血量低（<10%）
         else if (hp_percentage <= low_hp_threshold_) {
             // 如果低血时应该停止小陀螺
-
-            // ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
-            enableSpinMode(0);  // 改为0表示关闭
-            // spin_enabled_ = false;
-
+            if (enable_stop_spin_when_low_hp_ && spin_enabled_) {
+                // ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
+                enableSpinMode(false);
+                spin_enabled_ = false;
+            }
             
             // 如果不在补给区
             if (!is_at_supply_) {
@@ -358,10 +357,10 @@ public:
                 // new_goal.pose.position.z);
     }
     
-    // 控制小陀螺模式 - 修改消息类型为UInt8
-    void enableSpinMode(uint8_t enable) {
-        std_msgs::UInt8 msg;
-        msg.data = enable;  // 1:开启小陀螺, 0:关闭小陀螺
+    // 控制小陀螺模式
+    void enableSpinMode(bool enable) {
+        std_msgs::Bool msg;
+        msg.data = enable;
         spin_pub_.publish(msg);
         // ROS_INFO("Spin mode %s", enable ? "enabled" : "disabled");
     }

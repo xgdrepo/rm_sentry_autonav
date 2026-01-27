@@ -1,0 +1,88 @@
+<launch>
+    <param name="/use_sim_time" value="true" />
+
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find robot)/map/map.yaml" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robot)/rviz/config.rviz" />
+
+    
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robot)/world/arena.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    </include>
+
+    <node
+    name="tf_base_lidar"
+    pkg="tf"
+    type="static_transform_publisher"
+    args="-0.046164 -0.20002 0.16926  0 3.1415 0 /base_link /lidar_link 40" />
+
+    <node
+    name="spawn_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x -5.25 -y 2.5 -z 0.3 -R 0 -P 0 -Y 0"
+    output="screen" />
+    <!-- args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x -5.25 -y 3 -z 0.3 -R 0 -P 0 -Y 0" -->
+
+    <!-- run pointcloud_to_laserscan node -->
+    <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+        <remap from="cloud_in" to="/livox/lidar"/>
+        <remap from="scan" to="/scan"/>
+        <rosparam>
+            target_frame: lidar_link
+            transform_tolerance: 0.001
+            min_height: -1
+            max_height: 0.3
+            angle_min: -3.1415926 # -M_PI
+            angle_max: 3.1415926 # M_PI
+            angle_increment: 0.003 # 0.005
+            scan_time: 0.01
+            range_min: 0.4
+            range_max: 20
+            use_inf: true
+            concurrency_level: 1
+        </rosparam>
+    </node>
+
+    <!-- <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan1">
+        <remap from="cloud_in" to="/livox/lidar"/>
+        <remap from="scan" to="/scan1"/>
+        <rosparam>
+            target_frame: lidar_link
+            transform_tolerance: 0.001
+            min_height: -1
+            max_height: 0.1
+            angle_min: -3.1415926 # -M_PI
+            angle_max: 3.1415926 # M_PI
+            angle_increment: 0.005 # 0.17degree
+            scan_time: 0.01
+            range_min: 0.4
+            range_max: 20
+            use_inf: true
+            concurrency_level: 1
+        </rosparam>
+    </node> -->
+    <!-- <node pkg="imu_to_odom" type="imu_to_odom_node" name="imu_to_odom_node"/> -->
+
+    <include file="$(find robot)/launch/amcl.launch" />
+    
+    <!-- <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+        <rosparam file="$(find robot)/param/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find robot)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find robot)/param/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find robot)/param/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find robot)/param/base_local_planner_params.yaml" command="load" />
+        <remap from="odom" to="odom1" /> 
+    </node> -->
+
+
+    <!-- <include file="$(find dynamic_map_generator)/launch/dynamic_map_generator.launch" /> -->
+
+
+    <include file="$(find astar_path_planner)/launch/astar_planner.launch" />
+
+    <include file="$(find path_follower)/launch/path_follower.launch" />
+
+
+</launch>

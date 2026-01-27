@@ -108,7 +108,7 @@ public:
         
         // 初始化发布器
         goal_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, true);
-        spin_pub_ = nh_.advertise<std_msgs::UInt8>("/spin_mode_cmd", 10, true);  // 修改为UInt8
+        spin_pub_ = nh_.advertise<std_msgs::Bool>("/spin_mode_cmd", 10, true);
         
         // ROS_INFO("Decision Node initialized");
         // ROS_INFO("Team: %s", team_color_.c_str());
@@ -273,8 +273,8 @@ public:
         
         double hp_percentage = (static_cast<double>(current_hp_) / max_hp_) * 100.0;
         
-        // ROS_INFO("HP percentage: %.1f%%, At home: %s, At supply: %s", 
-        //          hp_percentage, is_at_home_ ? "true" : "false", is_at_supply_ ? "true" : "false");
+        ROS_INFO("HP percentage: %.1f%%, At home: %s, At supply: %s", 
+                 hp_percentage, is_at_home_ ? "true" : "false", is_at_supply_ ? "true" : "false");
         
         // 情况1：血量满（>95%）且不在增益区
         if (hp_percentage >= full_hp_threshold_) {
@@ -299,7 +299,7 @@ public:
             // 如果在增益区且允许开启小陀螺
             if (is_at_home_) {
                 // ROS_INFO("At %s gain zone with full HP. Enabling spin mode...", team_color_.c_str());
-                enableSpinMode(1);  // 改为1表示开启
+                enableSpinMode(true);
                 // spin_enabled_ = true;
             }
         }
@@ -308,7 +308,7 @@ public:
             // 如果低血时应该停止小陀螺
 
             // ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
-            enableSpinMode(0);  // 改为0表示关闭
+            enableSpinMode(false);
             // spin_enabled_ = false;
 
             
@@ -358,10 +358,10 @@ public:
                 // new_goal.pose.position.z);
     }
     
-    // 控制小陀螺模式 - 修改消息类型为UInt8
-    void enableSpinMode(uint8_t enable) {
-        std_msgs::UInt8 msg;
-        msg.data = enable;  // 1:开启小陀螺, 0:关闭小陀螺
+    // 控制小陀螺模式
+    void enableSpinMode(bool enable) {
+        std_msgs::Bool msg;
+        msg.data = enable;
         spin_pub_.publish(msg);
         // ROS_INFO("Spin mode %s", enable ? "enabled" : "disabled");
     }
