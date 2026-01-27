@@ -118,16 +118,13 @@
     <!-- 串口通信节点 -->
     <node pkg="serial_com" type="serial_com" name="serial_com" output="screen">
         <!-- 参数设置 -->
-        <param name="cmd_vel_topic" type="string" value="/cmd_vel" />
+        <param name="cmd_vel_topic" type="string" value="/cmd_vel1" />
         <param name="serial_port" type="string" value="/dev/pts/5" />
         
         <!-- ROS参数服务器设置 -->
         <rosparam>
-            # 串口参数
             baud_rate: 115200
             timeout: 1000
-            
-            # 小陀螺默认状态
             default_spin_mode: false
         </rosparam>
     </node>
