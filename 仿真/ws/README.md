@@ -30,7 +30,7 @@ cmake .. && make -j
 sudo make install
 ```
 
-### **2. 编译src中的功能包**
+### **2. 编译src中的功能包 第一次编译报错，再编译一次就行了**
 ```bash
 chmod +x ~/ws/src/livox_ros_driver2/build.sh
 cd ~/ws/src/livox_ros_driver2
@@ -67,7 +67,8 @@ roslaunch robot nav.launch
 ```bash
 socat -d -d pty,raw,echo=0 pty,raw,echo=0
 ```
-### **修改serial_com.launch中/dev/pts/*参数**
+
+### **修改nav.launch中串口通信节点的串口号/dev/pts/*参数**
 
 
 ### **终端3：输入血量**
