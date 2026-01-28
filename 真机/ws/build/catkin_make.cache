@@ -1,0 +1,2 @@
+astar_path_planner:decision:dynamic_map_generator:imu_to_odom:livox_ros_driver2:path_follower:robot:serial_com
+-DROS_EDITION=ROS1 -DCATKIN_DEVEL_PREFIX=/home/xu/ws1/devel -DCMAKE_INSTALL_PREFIX=/home/xu/ws1/install -G Unix Makefiles

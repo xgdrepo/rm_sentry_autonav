@@ -1,0 +1,159 @@
+<?xml version="1.0"?>
+<launch>
+    <param name="/use_sim_time" value="true" />
+    <!-- 红方 red 蓝方 blue -->
+    <arg name="team_color" default="blue" />
+
+    <!-- 根据队伍颜色定义初始位置参数 -->
+    <arg name="initial_pose_x" value="-5.25" if="$(eval team_color == 'red')" />
+    <arg name="initial_pose_x" value="5.25" unless="$(eval team_color == 'red')" />
+    
+    <arg name="initial_pose_y" value="3.0" if="$(eval team_color == 'red')" />
+    <arg name="initial_pose_y" value="-3.0" unless="$(eval team_color == 'red')" />
+    
+    <!-- 初始朝向设置：红方朝0度（右），蓝方朝180度（左） -->
+    <arg name="initial_pose_a" value="0.0" if="$(eval team_color == 'red')" />
+    <arg name="initial_pose_a" value="3.1415" unless="$(eval team_color == 'red')" />  <!-- π rad = 180° -->
+
+    <!-- 静态栅格地图服务 -->
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find robot)/map/map.yaml" />
+    <!-- rviz显示 -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robot)/rviz/config.rviz" />
+
+    <!-- gazebo仿真场地 -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find robot)/world/arena.world"/>
+        <arg name="paused" value="false"/>
+        <arg name="use_sim_time" value="true"/>
+    </include>
+
+    <!-- base_link和lidar_link坐标变换 -->
+    <node name="tf_base_lidar" pkg="tf" type="static_transform_publisher"
+          args="-0.046164 -0.20002 0.16926  0 3.1415 0 /base_link /lidar_link 40" />
+
+    <!-- gazebo机器人初始位姿 -->
+    <node name="spawn_model" pkg="gazebo_ros" type="spawn_model"
+          args="-urdf -file $(find robot)/urdf/robot.urdf -model robot 
+                -x $(arg initial_pose_x) -y $(arg initial_pose_y) -z 0.2 
+                -R 0 -P 0 -Y $(arg initial_pose_a)"
+          output="screen" />
+
+    <!-- 三维点云 转 二维点云  -->
+    <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+        <remap from="cloud_in" to="/livox/lidar"/>
+        <remap from="scan" to="/scan"/>
+        <rosparam>
+            target_frame: lidar_link
+            transform_tolerance: 0.001
+            min_height: -1
+            max_height: 0.3
+            angle_min: -3.1415926
+            angle_max: 3.1415926
+            angle_increment: 0.005
+            scan_time: 0.01
+            range_min: 0.4
+            range_max: 20
+            use_inf: true
+            concurrency_level: 1
+        </rosparam>
+    </node>
+
+    <!-- amcl定位 -->
+    <include file="$(find robot)/launch/amcl.launch">
+        <arg name="initial_pose_x" value="$(arg initial_pose_x)" />
+        <arg name="initial_pose_y" value="$(arg initial_pose_y)" />
+        <arg name="initial_pose_a" value="$(arg initial_pose_a)" />
+    </include>
+    
+    <!-- A*路径规划节点 -->
+    <node name="astar_planner" pkg="astar_path_planner" type="astar_planner_node" output="screen">
+        <!-- 话题参数 -->
+        <param name="amcl_topic" value="/amcl_pose" />
+        <param name="goal_topic" value="/move_base_simple/goal" />
+        <param name="map_topic" value="/map1" />
+        <param name="path_topic" value="/path" />
+        
+        <!-- 频率参数 单位：hz-->
+        <param name="pose_update_rate" value="10" />
+        <param name="planning_rate" value="5" />
+        
+        <!-- 机器人参数 -->
+        <param name="robot_radius" value="0.45" />
+    </node>
+
+    <!-- 路径跟随节点 -->
+    <node name="path_follower" pkg="path_follower" type="path_follower" output="screen">
+        <!-- 控制参数 -->
+        <param name="control_frequency" value="10.0"/>   <!-- 控制频率(Hz) -->
+        <param name="control_gain" value="4"/>        <!-- 控制增益 3-->
+        
+        <!-- 路径跟踪参数 -->
+        <param name="target_distance" value="0.2"/>     <!-- 目标点距离(m)，增加距离使控制更平滑 0.1-->
+        <param name="stop_threshold" value="0.05"/>     <!-- 停止阈值(m) -->
+        
+        <!-- 速度限制 -->
+        <param name="max_linear_speed" value="2.5"/>    <!-- 最大线速度(m/s) -->
+        
+        <!-- 坐标系设置 -->
+        <param name="global_frame" value="map"/>        <!-- 全局坐标系 -->
+        <param name="robot_frame" value="base_link"/>   <!-- 机器人坐标系 -->
+        
+        <!-- 话题重映射 -->
+        <remap from="path" to="/path"/>
+        <remap from="pose" to="/amcl_pose"/>
+        <remap from="cmd_vel1" to="/cmd_vel1"/>
+    </node>
+
+    <!-- 决策节点 -->
+    <node name="decision_node" pkg="decision" type="decision_node" output="screen">
+        <param name="team_color" value="$(arg team_color)" />
+        <param name="full_hp_threshold" value="95.0" />
+        <param name="low_hp_threshold" value="10.0" />
+        <param name="enable_spin_at_base" value="true" />
+        <param name="enable_stop_spin_when_low_hp" value="true" />
+        <param name="position_tolerance" value="0.1" />
+        <param name="orientation_tolerance" value="0.1" />
+    </node>
+
+    <!-- 串口通信节点 -->
+    <node pkg="serial_com" type="serial_com" name="serial_com" output="screen">
+        <!-- 参数设置 -->
+        <param name="cmd_vel_topic" type="string" value="/cmd_vel" />
+        <param name="serial_port" type="string" value="/dev/pts/5" />
+        
+        <!-- ROS参数服务器设置 -->
+        <rosparam>
+            # 串口参数
+            baud_rate: 115200
+            timeout: 1000
+            
+            # 小陀螺默认状态
+            default_spin_mode: false
+        </rosparam>
+    </node>
+
+    <!-- 动态栅格地图生成器节点 -->
+    <node name="dynamic_map_generator" 
+          pkg="dynamic_map_generator" 
+          type="dynamic_map_generator_node" 
+          output="screen">
+        
+        <!-- 地图参数 -->
+        <param name="map_resolution" value="0.05" />
+        <param name="map_width" value="800" />      <!-- 40米 (800 * 0.05) -->
+        <param name="map_height" value="800" />     <!-- 40米 (800 * 0.05) -->
+        <param name="map_origin_x" value="-20.0" /> <!-- 左下角在(-20, -20) -->
+        <param name="map_origin_y" value="-20.0" />
+        
+        <!-- 坐标系设置 -->
+        <param name="map_frame" value="map" />
+        <param name="odom_frame" value="odom" />
+        <param name="base_frame" value="base_link" />
+        <param name="lidar_frame" value="lidar_link" />
+        
+        <!-- 静态地图话题 -->
+        <param name="static_map_topic" value="/map" />
+        
+    </node>
+
+</launch>

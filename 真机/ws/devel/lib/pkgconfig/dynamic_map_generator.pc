@@ -1,0 +1,8 @@
+prefix=/home/xu/ws1/devel
+
+Name: dynamic_map_generator
+Description: Description of dynamic_map_generator
+Version: 0.0.1
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

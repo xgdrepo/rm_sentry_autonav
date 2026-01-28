@@ -1,0 +1,8 @@
+prefix=/home/xu/ws1/devel
+
+Name: decision
+Description: Description of decision
+Version: 1.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: roscpp std_msgs geometry_msgs tf

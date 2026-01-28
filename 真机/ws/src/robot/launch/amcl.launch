@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- 接收从主launch传递的参数 -->
+    <arg name="initial_pose_x" default="0.0" />
+    <arg name="initial_pose_y" default="0.0" />
+    <arg name="initial_pose_a" default="0.0" />
+    
+    <node pkg="amcl" type="amcl" name="amcl" output="screen">
+        <!-- 使用从主launch传递的初始位姿 -->
+        <param name="initial_pose_x" value="$(arg initial_pose_x)"/>
+        <param name="initial_pose_y" value="$(arg initial_pose_y)"/>
+        <param name="initial_pose_a" value="$(arg initial_pose_a)"/>
+        
+        <!-- 注意：AMCL 2D 定位通常忽略 z 轴，但如果需要可以设置 covariance -->
+        <!-- <param name="initial_cov_xx" value="0.25"/>
+        <param name="initial_cov_yy" value="0.25"/>
+        <param name="initial_cov_aa" value="0.0685"/> -->
+        
+        <!-- 全向移动机器人使用omni模型 -->
+        <param name="odom_model_type" value="omni"/>
+        
+        <!-- 全向运动模型的噪声参数（需要根据实际调优） -->
+        <param name="odom_alpha1" value="0.005"/>  <!-- 平移噪声 -->
+        <param name="odom_alpha2" value="0.005"/>  <!-- 平移噪声 -->
+        <param name="odom_alpha3" value="0.010"/>  <!-- 旋转噪声 -->
+        <param name="odom_alpha4" value="0.005"/>  <!-- 旋转噪声 -->
+        <param name="odom_alpha5" value="0.003"/>  <!-- 平移噪声（全向特有） -->
+        
+        <!-- 粒子过滤器参数 -->
+        <param name="min_particles" value="1000"/>
+        <param name="max_particles" value="3000"/>
+        <param name="kld_err" value="0.01"/>
+        <param name="kld_z" value="0.99"/>
+        <param name="resample_interval" value="2"/>  <!-- 增加重采样间隔 -->
+        
+        <!-- 激光雷达参数 -->
+        <param name="laser_max_beams" value="60"/>
+        <param name="laser_model_type" value="likelihood_field"/>
+        <param name="laser_likelihood_max_dist" value="2.0"/>
+        <param name="laser_z_hit" value="0.95"/>
+        <param name="laser_z_short" value="0.1"/>
+        <param name="laser_z_max" value="0.05"/>
+        <param name="laser_z_rand" value="0.05"/>
+        <param name="laser_sigma_hit" value="0.2"/>
+        <param name="laser_lambda_short" value="0.1"/>
+        
+        <!-- 更新阈值 -->
+        <param name="update_min_d" value="-1"/>  <!-- 5cm移动才更新 -->
+        <param name="update_min_a" value="-1"/>   <!-- ~5.7度旋转才更新 -->
+        
+        <!-- 坐标系 -->
+        <param name="odom_frame_id" value="base_link"/>
+        <param name="base_frame_id" value="base_link"/>
+        <param name="global_frame_id" value="map"/>
+        
+        <!-- 其他参数 -->
+        <param name="transform_tolerance" value="1.0"/>
+        <param name="gui_publish_rate" value="10.0"/>
+        <param name="recovery_alpha_slow" value="0.0"/>
+        <param name="recovery_alpha_fast" value="0.0"/>
+    </node>
+</launch>

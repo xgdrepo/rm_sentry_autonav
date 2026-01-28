@@ -1,0 +1,8 @@
+prefix=/home/xu/ws1/devel
+
+Name: robot
+Description: Description of robot
+Version: 0.1.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: roscpp sensor_msgs

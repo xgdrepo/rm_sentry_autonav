@@ -1,0 +1,8 @@
+prefix=/home/xu/ws1/devel
+
+Name: imu_to_odom
+Description: Description of imu_to_odom
+Version: 1.0.0
+Cflags: 
+Libs: -L${prefix}/lib -limu_to_odom
+Requires: roscpp sensor_msgs nav_msgs tf2 tf2_ros

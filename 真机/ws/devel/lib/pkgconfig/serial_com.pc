@@ -1,0 +1,8 @@
+prefix=/home/xu/ws1/devel
+
+Name: serial_com
+Description: Description of serial_com
+Version: 1.0.0
+Cflags: -I/home/xu/ws1/src/serial_com/include
+Libs: -L${prefix}/lib -lserial_com
+Requires: roscpp geometry_msgs std_msgs serial

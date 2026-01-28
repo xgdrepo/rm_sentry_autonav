@@ -1,0 +1,8 @@
+prefix=/home/xu/ws1/install
+
+Name: path_follower
+Description: Description of path_follower
+Version: 1.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: roscpp geometry_msgs nav_msgs tf2 tf2_ros tf2_geometry_msgs

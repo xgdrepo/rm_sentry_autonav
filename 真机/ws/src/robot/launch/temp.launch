@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="team_color" default="blue" />
+
+    <!-- 根据队伍颜色定义初始位置参数 -->
+    <arg name="initial_pose_x" value="-5.25" if="$(eval team_color == 'red')" />
+    <arg name="initial_pose_x" value="5.25" unless="$(eval team_color == 'red')" />
+    
+    <arg name="initial_pose_y" value="3.0" if="$(eval team_color == 'red')" />
+    <arg name="initial_pose_y" value="-3.0" unless="$(eval team_color == 'red')" />
+    
+    <!-- 初始朝向设置：红方朝0度（右），蓝方朝180度（左） -->
+    <arg name="initial_pose_a" value="0.0" if="$(eval team_color == 'red')" />
+    <arg name="initial_pose_a" value="3.1415" unless="$(eval team_color == 'red')" />  <!-- π rad = 180° -->
+
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find robot)/map/map.yaml" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robot)/rviz/config.rviz" />
+    <!-- base_link和lidar_link坐标变换 -->
+    <node name="tf_base_lidar" pkg="tf" type="static_transform_publisher"
+          args="-0.046164 -0.20002 0.16926  0 3.1415 0 /base_link /lidar_link 40" />
+    <node name="static_odom_tf" pkg="tf" type="static_transform_publisher"
+      args="0 0 0 0 0 0 map odom 100" />
+
+    <node name="fake_scan_publisher" pkg="rostopic" type="rostopic"
+        args="pub /scan sensor_msgs/LaserScan '
+    {
+    header: {frame_id: lidar_link, stamp: {secs: 0, nsecs: 0}},
+    angle_min: -3.14159,
+    angle_max: 3.14159,
+    angle_increment: 0.0174533,
+    time_increment: 0.0,
+    scan_time: 0.1,
+    range_min: 0.1,
+    range_max: 10.0,
+    ranges: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+    intensities: []
+    }' -r 10" />
+
+    <include file="$(find robot)/launch/amcl.launch">
+        <arg name="initial_pose_x" value="$(arg initial_pose_x)" />
+        <arg name="initial_pose_y" value="$(arg initial_pose_y)" />
+        <arg name="initial_pose_a" value="$(arg initial_pose_a)" />
+    </include>
+</launch>
