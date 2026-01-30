@@ -1,0 +1,18 @@
+<launch>
+  <!-- <include
+    file="$(find gazebo_ros)/launch/empty_world.launch" /> -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <!-- <arg name="world_name" value="$(find robot)/world/arena.world"/> -->
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+  </include>
+
+  <node
+    name="spawn_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x 5.0 -y -3.0 -z 0.2 -R 0 -P 0 -Y 3.1415"
+    output="screen" />
+
+
+</launch>

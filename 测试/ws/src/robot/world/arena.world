@@ -1,0 +1,215 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="3v3_arena_world">
+
+    <!-- 在.world文件中添加这些 -->
+    <!-- 1. 太阳光（方向光源） -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <scene>
+      <ambient>0.8 0.8 0.8 1</ambient>  <!-- 增加环境光 -->
+      <background>0.7 0.7 0.7 1</background>  <!-- 增加背景亮度 -->
+    </scene>
+    
+    <!-- 1. 场地底板（12m×8m，中心对齐Gazebo原点） -->
+    <model name="arena_floor">
+      <static>true</static>
+      <link name="floor_link">
+        <collision name="floor_collision">
+          <geometry>
+            <box>
+              <size>12 8 0.1</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="floor_visual">
+          <geometry>
+            <box>
+              <size>12 8 0.1</size>
+            </box>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Grey</name>
+            </script>
+          </material>
+        </visual>
+        <pose>0 0 0 0 0 0</pose>
+      </link>
+    </model>
+
+    <!-- 2. 场地边框（0.5m高，黑色） -->
+    <model name="arena_border">
+      <static>true</static>
+      <!-- 底部长边 -->
+      <link name="border_long1">
+        <collision name="col">
+          <geometry><box><size>12 0.1 1</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>12 0.1 1</size></box></geometry>
+          <material><script><name>Gazebo/Black</name></script></material>
+        </visual>
+        <pose>0 -4.05 0.1 0 0 0</pose>
+      </link>
+      <!-- 顶部长边 -->
+      <link name="border_long2">
+        <collision name="col">
+          <geometry><box><size>12 0.1 1</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>12 0.1 1</size></box></geometry>
+          <material><script><name>Gazebo/Black</name></script></material>
+        </visual>
+        <pose>0 4.05 0.1 0 0 0</pose>
+      </link>
+      <!-- 左侧短边 -->
+      <link name="border_short1">
+        <collision name="col">
+          <geometry><box><size>0.1 8 1</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>0.1 8 1</size></box></geometry>
+          <material><script><name>Gazebo/Black</name></script></material>
+        </visual>
+        <pose>-6.05 0 0.1 0 0 0</pose>
+      </link>
+      <!-- 右侧短边 -->
+      <link name="border_short2">
+        <collision name="col">
+          <geometry><box><size>0.1 8 1</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>0.1 8 1</size></box></geometry>
+          <material><script><name>Gazebo/Black</name></script></material>
+        </visual>
+        <pose>6.05 0 0.1 0 0 0</pose>
+      </link>
+    </model>
+
+    <!-- 3. 补给区（启动区） -->
+    <!-- 左侧补给区（红扳手） -->
+    <model name="supply_zone_red">
+      <static>true</static>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>1.5 2 0.001</size></box></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material>
+          <pose>0 0 0 0 0 0</pose>
+        </visual>
+        <visual name="wrench_vis">
+          <geometry><box><size>0.8 0.4 0.001</size></box></geometry>
+          <material><script><name>Gazebo/Red</name></script></material>
+          <pose>0 0 0.001 0 0 0.785</pose>
+        </visual>
+        <pose>-5.25 3 0.05 0 0 0</pose>
+      </link>
+    </model>
+    <!-- 右侧补给区（蓝扳手） -->
+    <model name="supply_zone_blue">
+      <static>true</static>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>1.5 2 0.001</size></box></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material>
+        </visual>
+        <visual name="wrench_vis">
+          <geometry><box><size>0.8 0.4 0.001</size></box></geometry>
+          <material><script><name>Gazebo/Blue</name></script></material>
+          <pose>0 0 0.001 0 0 0.785</pose>
+        </visual>
+        <pose>5.25 -3 0.05 0 0 0</pose>
+      </link>
+    </model>
+
+    <!-- 4. 高地（底部200mm平台+顶部200mm凸台，与控制区衔接） -->
+    <!-- 左侧高地 -->
+    <model name="highland_left">
+      <static>true</static>
+      <!-- 底部主平台（2m×5m×0.2m） -->
+      <link name="main_platform">
+        <collision name="col">
+          <geometry><box><size>2 5 0.2</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>2 5 0.2</size></box></geometry>
+          <material><script><name>Gazebo/LightGrey</name></script></material>
+        </visual>
+        <pose>-2.5 1.5 0.1 0 0 0</pose>
+      </link>
+      <!-- 顶部凸台（2m×0.2m×0.2m，与控制区衔接） -->
+      <link name="top_bump">
+        <collision name="col">
+          <geometry><box><size>0.15 1.8 0.2</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>0.15 1.8 0.2</size></box></geometry>
+          <material><script><name>Gazebo/LightGrey</name></script></material>
+        </visual>
+        <pose>-1.575 0.8 0.3 0 0 0</pose> <!-- 凸台右移，与控制区左边缘贴合 -->
+      </link>
+
+    </model>
+    <!-- 右侧高地 -->
+    <model name="highland_right">
+      <static>true</static>
+      <!-- 底部主平台 -->
+      <link name="main_platform">
+        <collision name="col">
+          <geometry><box><size>2 5 0.2</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>2 5 0.2</size></box></geometry>
+          <material><script><name>Gazebo/LightGrey</name></script></material>
+        </visual>
+        <pose>2.5 -1.5 0.1 0 0 0</pose>
+      </link>
+      <!-- 顶部凸台（与控制区衔接） -->
+      <link name="top_bump">
+        <collision name="col">
+          <geometry><box><size>0.15 1.8 0.2</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>0.15 1.8 0.2</size></box></geometry>
+          <material><script><name>Gazebo/LightGrey</name></script></material>
+        </visual>
+        <pose>1.575 -0.8 0.3 0 0 0</pose> <!-- 凸台左移，与控制区右边缘贴合 -->
+      </link>
+
+    </model>
+
+    <!-- 5. 控制区（绿双剑，与高地凸台衔接） -->
+    <model name="control_zone">
+      <static>true</static>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>3 3 0.001</size></box></geometry>
+          <material><script><name>Gazebo/Cyan</name></script></material>
+        </visual>
+        <visual name="sword1_vis">
+          <geometry><box><size>1.5 0.3 0.001</size></box></geometry>
+          <material><script><name>Gazebo/Green</name></script></material>
+          <pose>0 0 0.001 0 0 0.785</pose>
+        </visual>
+        <visual name="sword2_vis">
+          <geometry><box><size>1.5 0.3 0.001</size></box></geometry>
+          <material><script><name>Gazebo/Green</name></script></material>
+          <pose>0 0 0.001 0 0 2.356</pose>
+        </visual>
+        <pose>0 0 0.05 0 0 0</pose> <!-- 控制区高度抬升，底部与高地凸台顶部贴合 -->
+      </link>
+    </model>
+
+  </world>
+</sdf>
