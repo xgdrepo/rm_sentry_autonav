@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=ROS Navigation
+Comment=Auto start ROS navigation on boot
+Exec=bash -c "sleep 2 && cd /home/rm/ws && source devel/setup.sh && roslaunch robot amcl_test.launch"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=false
+X-GNOME-Autostart-Delay=0
+Terminal=false

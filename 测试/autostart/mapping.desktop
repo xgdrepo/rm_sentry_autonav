@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=ROS Navigation
+Comment=Auto start ROS navigation on boot
+Exec=bash -c "sleep 2 && bash /home/rm/.config/autostart/mapping.sh"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=false
+X-GNOME-Autostart-Delay=0
+Terminal=false
