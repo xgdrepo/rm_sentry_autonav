@@ -1,6 +1,5 @@
 #include <ros/ros.h>
 #include <std_msgs/UInt8.h>
-#include <std_msgs/UInt16.h>  // 新增UInt16头文件
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
@@ -39,9 +38,9 @@ private:
         geometry_msgs::Pose blue_supply;
     } team_poses_;
     
-    // 状态变量 - 将uint8_t改为uint16_t
-    uint16_t current_hp_;
-    uint16_t max_hp_;
+    // 状态变量
+    uint8_t current_hp_;
+    uint8_t max_hp_;
     geometry_msgs::Pose current_pose_;
     std::mutex pose_mutex_;
     std::mutex hp_mutex_;
@@ -68,7 +67,7 @@ private:
 public:
     DecisionNode() : 
         current_hp_(0),
-        max_hp_(400),  // 最大血量保持100，但可以设置为更高值如400
+        max_hp_(100),
         is_at_home_(false),
         is_at_supply_(false),
         spin_enabled_(false),
@@ -78,16 +77,13 @@ public:
         
         // 初始化参数
         ros::NodeHandle private_nh("~");
-        private_nh.param("full_hp_threshold", full_hp_threshold_, 385.0); // 95%以上视为满血
-        private_nh.param("low_hp_threshold", low_hp_threshold_, 85.0);   // 10%以下视为低血
+        private_nh.param("full_hp_threshold", full_hp_threshold_, 95.0); // 95%以上视为满血
+        private_nh.param("low_hp_threshold", low_hp_threshold_, 10.0);   // 10%以下视为低血
         private_nh.param("enable_spin_at_base", enable_spin_at_base_, true);
         private_nh.param("enable_stop_spin_when_low_hp", enable_stop_spin_when_low_hp_, true);
         private_nh.param("position_tolerance", position_tolerance_, 0.1); // 位置容差0.1米
         private_nh.param("orientation_tolerance", orientation_tolerance_, 0.1); // 角度容差0.1弧度
         private_nh.param("team_color", team_color_, team_color_);
-        
-        // 新增：最大血量参数，可以设置为400
-        private_nh.param("max_hp", max_hp_, static_cast<uint16_t>(400)); // 默认为100
         
         // 将队伍颜色转换为小写
         std::transform(team_color_.begin(), team_color_.end(), team_color_.begin(), ::tolower);
@@ -104,18 +100,17 @@ public:
         // 根据队伍颜色设置目标点
         initializeTargetPoses();
         
-        // 初始化订阅器 - 修改为UInt16
-        hp_sub_ = nh_.subscribe<std_msgs::UInt16>("/robot_hp", 10, 
+        // 初始化订阅器
+        hp_sub_ = nh_.subscribe<std_msgs::UInt8>("/robot_hp", 10, 
             &DecisionNode::hpCallback, this);
         pose_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10,
             &DecisionNode::poseCallback, this);
         
         // 初始化发布器
         goal_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, true);
-        spin_pub_ = nh_.advertise<std_msgs::UInt8>("/spin_mode_cmd", 10, true);
+        spin_pub_ = nh_.advertise<std_msgs::UInt8>("/spin_mode_cmd", 10, true);  // 修改为UInt8
         
         // ROS_INFO("Decision Node initialized");
-        // ROS_INFO("Max HP: %d", max_hp_);
         // ROS_INFO("Team: %s", team_color_.c_str());
         // ROS_INFO("Full HP threshold: %.1f%%", full_hp_threshold_);
         // ROS_INFO("Low HP threshold: %.1f%%", low_hp_threshold_);
@@ -172,12 +167,12 @@ public:
         }
     }
     
-    // 血量回调函数 - 修改为UInt16
-    void hpCallback(const std_msgs::UInt16::ConstPtr& msg) {
+    // 血量回调函数
+    void hpCallback(const std_msgs::UInt8::ConstPtr& msg) {
         // std::lock_guard<std::mutex> lock(hp_mutex_);
         current_hp_ = msg->data;
 
-        // ROS_INFO("Current HP: %d (Max: %d)", current_hp_, max_hp_);
+        // ROS_INFO("Current HP: %d", current_hp_);
         
         // 决策逻辑
         makeDecision();
@@ -271,16 +266,15 @@ public:
         return (distance < 0.01) && (yaw_diff < 0.01); // 更小的容差来判断是否相同
     }
     
-    // 决策逻辑 - 修改百分比计算以适应UInt16
+    // 决策逻辑
     void makeDecision() {
         // std::lock_guard<std::mutex> lock1(hp_mutex_);
         // std::lock_guard<std::mutex> lock2(pose_mutex_);
         
         double hp_percentage = (static_cast<double>(current_hp_) / max_hp_) * 100.0;
         
-        // ROS_INFO("HP percentage: %.1f%% (HP: %d/%d), At home: %s, At supply: %s", 
-        //          hp_percentage, current_hp_, max_hp_, 
-        //          is_at_home_ ? "true" : "false", is_at_supply_ ? "true" : "false");
+        // ROS_INFO("HP percentage: %.1f%%, At home: %s, At supply: %s", 
+        //          hp_percentage, is_at_home_ ? "true" : "false", is_at_supply_ ? "true" : "false");
         
         // 情况1：血量满（>95%）且不在增益区
         if (hp_percentage >= full_hp_threshold_) {
@@ -305,14 +299,18 @@ public:
             // 如果在增益区且允许开启小陀螺
             if (is_at_home_) {
                 // ROS_INFO("At %s gain zone with full HP. Enabling spin mode...", team_color_.c_str());
-                enableSpinMode(1);  // 1表示开启
+                enableSpinMode(1);  // 改为1表示开启
+                // spin_enabled_ = true;
             }
         }
         // 情况2：血量低（<10%）
         else if (hp_percentage <= low_hp_threshold_) {
             // 如果低血时应该停止小陀螺
+
             // ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
-            enableSpinMode(0);  // 0表示关闭
+            enableSpinMode(0);  // 改为0表示关闭
+            // spin_enabled_ = false;
+
             
             // 如果不在补给区
             if (!is_at_supply_) {
@@ -360,7 +358,7 @@ public:
                 // new_goal.pose.position.z);
     }
     
-    // 控制小陀螺模式
+    // 控制小陀螺模式 - 修改消息类型为UInt8
     void enableSpinMode(uint8_t enable) {
         std_msgs::UInt8 msg;
         msg.data = enable;  // 1:开启小陀螺, 0:关闭小陀螺
