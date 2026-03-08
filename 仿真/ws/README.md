@@ -15,7 +15,8 @@ ros-noetic-amcl \
 ros-noetic-gmapping \
 ros-noetic-map-server \
 ros-noetic-serial \
-ros-noetic-pointcloud-to-laserscan
+ros-noetic-pointcloud-to-laserscan \
+ros-noetic-csm
 ```
 
 ## **编译步骤**

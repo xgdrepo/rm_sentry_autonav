@@ -1,5 +1,6 @@
 #include <ros/ros.h>
-#include <std_msgs/UInt8.h>
+#include <std_msgs/UInt16.h>  // 修改为UInt16
+#include <std_msgs/UInt8.h>  // 修改为UInt16
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
@@ -39,8 +40,8 @@ private:
     } team_poses_;
     
     // 状态变量
-    uint8_t current_hp_;
-    uint8_t max_hp_;
+    uint16_t current_hp_;  // 修改为uint16_t
+    uint16_t max_hp_;      // 修改为uint16_t
     geometry_msgs::Pose current_pose_;
     std::mutex pose_mutex_;
     std::mutex hp_mutex_;
@@ -67,7 +68,7 @@ private:
 public:
     DecisionNode() : 
         current_hp_(0),
-        max_hp_(100),
+        max_hp_(400),  // 修改为400，匹配血量范围
         is_at_home_(false),
         is_at_supply_(false),
         spin_enabled_(false),
@@ -100,8 +101,8 @@ public:
         // 根据队伍颜色设置目标点
         initializeTargetPoses();
         
-        // 初始化订阅器
-        hp_sub_ = nh_.subscribe<std_msgs::UInt8>("/robot_hp", 10, 
+        // 初始化订阅器 - 修改为UInt16
+        hp_sub_ = nh_.subscribe<std_msgs::UInt16>("/robot_hp", 10, 
             &DecisionNode::hpCallback, this);
         pose_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10,
             &DecisionNode::poseCallback, this);
@@ -167,8 +168,8 @@ public:
         }
     }
     
-    // 血量回调函数
-    void hpCallback(const std_msgs::UInt8::ConstPtr& msg) {
+    // 血量回调函数 - 修改参数类型为UInt16
+    void hpCallback(const std_msgs::UInt16::ConstPtr& msg) {
         // std::lock_guard<std::mutex> lock(hp_mutex_);
         current_hp_ = msg->data;
 
@@ -278,11 +279,12 @@ public:
         
         // 情况1：血量满（>95%）且不在增益区
         if (hp_percentage >= full_hp_threshold_) {
+            // ROS_INFO("----------------------", );
             if (!is_at_home_) {
                 // 检查是否需要发送新目标
                 if (current_goal_type_ != GOAL_HOME) {
-                    // ROS_INFO("HP is full (%.1f%%). Sending to %s gain zone...", 
-                            //  hp_percentage, team_color_.c_str());
+                    ROS_INFO("HP is full (%.1f%%). Sending to %s gain zone...", 
+                             hp_percentage, team_color_.c_str());
                     sendGoal(home_pose_, GOAL_HOME);
                     current_goal_type_ = GOAL_HOME;
                     goal_sent_ = true;
@@ -307,7 +309,7 @@ public:
         else if (hp_percentage <= low_hp_threshold_) {
             // 如果低血时应该停止小陀螺
 
-            // ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
+            ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
             enableSpinMode(0);  // 改为0表示关闭
             // spin_enabled_ = false;
 

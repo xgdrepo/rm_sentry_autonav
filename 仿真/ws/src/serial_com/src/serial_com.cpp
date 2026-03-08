@@ -4,6 +4,7 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
+#include <std_msgs/UInt16.h>
 #include <string>
 #include <iostream>
 #include <unistd.h> // for usleep
@@ -30,8 +31,8 @@ struct RadarSendFrame {
 
 // 雷达接收帧 (电控 -> PC -> 雷达)
 struct RadarRecvFrame {
-    FrameHeader header;  // FA, FB, 0x41, 1
-    uint8_t hp;
+    FrameHeader header;  // FA, FB, 0x41, 2 (修改：数据长度改为2，因为hp现在是uint16_t)
+    uint16_t hp;         // 修改：改为uint16_t以支持最高400血量
     uint16_t crc16;
 };
 #pragma pack(pop)
@@ -94,9 +95,9 @@ void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg)
     frame.header.start2 = 0xFB;
     frame.header.cmd_id = 0x21;
     frame.header.data_len = sizeof(frame.linear_x) + sizeof(frame.linear_y) + sizeof(frame.angular_z) + sizeof(frame.spin_mode);
-    frame.linear_x = msg->linear.x;
-    frame.linear_y = msg->linear.y;
-    frame.angular_z = msg->angular.z;
+    frame.linear_x = std::round(msg->linear.x * 1000.0f) / 1000.0f;
+    frame.linear_y = std::round(msg->linear.y * 1000.0f) / 1000.0f;
+    frame.angular_z = std::round(msg->angular.z * 1000.0f) / 1000.0f;
     frame.spin_mode = current_spin_mode;
     
     // 计算CRC：从cmd_id开始，到spin_mode结束（不包含crc16字段自身）
@@ -115,10 +116,11 @@ void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg)
             sentry_ser.flush();
             size_t bytes_written = sentry_ser.write(reinterpret_cast<uint8_t*>(&frame), sizeof(RadarSendFrame));
             if (bytes_written == sizeof(RadarSendFrame)) {
-                ROS_INFO("[TX] RadarSendFrame: linear_x=%.2f linear_y=%.2f angular_z=%.2f spin_mode=%d CRC=0x%04X", 
-                         frame.linear_x, frame.linear_y, frame.angular_z, frame.spin_mode, frame.crc16);
+                // ROS_INFO("[TX] RadarSendFrame: linear_x=%.4f linear_y=%.4f angular_z=%.4f spin_mode=%d CRC=0x%04X", 
+                //          frame.linear_x, frame.linear_y, frame.angular_z, frame.spin_mode, frame.crc16);
+                   
             } else {
-                ROS_WARN("[TX] Only wrote %zu bytes, expected %zu", bytes_written, sizeof(RadarSendFrame));
+                // ROS_WARN("[TX] Only wrote %zu bytes, expected %zu", bytes_written, sizeof(RadarSendFrame));
             }
         } else {
             ROS_ERROR("Serial port not open!");
@@ -134,51 +136,63 @@ void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg)
 void readSerialThread()
 {
     ROS_INFO("Serial read thread started");
-    RadarRecvFrame recv_frame;
-    uint8_t buffer[sizeof(RadarRecvFrame)];
+    uint8_t buffer[256];
+    size_t buffer_index = 0;
+    bool frame_started = false;
+    
     while (ros::ok()) {
         try {
-            if (sentry_ser.isOpen() && sentry_ser.available() >= sizeof(RadarRecvFrame)) {
-                size_t bytes_read = sentry_ser.read(buffer, sizeof(RadarRecvFrame));
-                
-                if (bytes_read == sizeof(RadarRecvFrame)) {
-                    memcpy(&recv_frame, buffer, sizeof(RadarRecvFrame));
+            if (sentry_ser.isOpen()) {
+                // 读取所有可用数据
+                size_t bytes_available = sentry_ser.available();
+                if (bytes_available > 0) {
+                    uint8_t temp_buffer[256];
+                    size_t bytes_read = sentry_ser.read(temp_buffer, 
+                        bytes_available > sizeof(temp_buffer) ? sizeof(temp_buffer) : bytes_available);
                     
-                    // 验证帧起始位
-                    if (recv_frame.header.start1 != 0xFA || recv_frame.header.start2 != 0xFB) {
-                        ROS_WARN("[RX] Invalid start bytes: 0x%02X 0x%02X", 
-                                recv_frame.header.start1, recv_frame.header.start2);
-                        continue;
+                    // 处理读取到的每个字节
+                    for (size_t i = 0; i < bytes_read; i++) {
+                        uint8_t current_byte = temp_buffer[i];
+                        
+                        if (!frame_started) {
+                            // 寻找帧起始符
+                            if (current_byte == 0xFA) {
+                                buffer_index = 0;
+                                buffer[buffer_index++] = current_byte;
+                                frame_started = true;
+                            }
+                        } else {
+                            // 收集帧数据
+                            buffer[buffer_index++] = current_byte;
+                            
+                            // 如果是第二个起始字节
+                            if (buffer_index == 2) {
+                                if (current_byte != 0xFB) {
+                                    // 不是有效的帧起始
+                                    frame_started = false;
+                                    buffer_index = 0;
+                                    ROS_WARN("[RX] Invalid second start byte: 0x%02X", current_byte);
+                                }
+                            }
+                            
+                            // 完整的RadarRecvFrame是8字节
+                            if (buffer_index >= sizeof(RadarRecvFrame)) {
+                                // 处理完整帧
+                                processFrame(buffer);
+                                
+                                // 重置状态，准备下一帧
+                                frame_started = false;
+                                buffer_index = 0;
+                            }
+                            
+                            // 防止缓冲区溢出
+                            if (buffer_index >= sizeof(buffer)) {
+                                frame_started = false;
+                                buffer_index = 0;
+                                ROS_WARN("[RX] Buffer overflow, resetting frame detection");
+                            }
+                        }
                     }
-                    
-                    // 计算CRC：从cmd_id开始，到hp结束（不包含crc16字段自身）
-                    size_t crc_len = sizeof(recv_frame.header.cmd_id) + sizeof(recv_frame.header.data_len) + 
-                                     sizeof(recv_frame.hp);
-                    
-                    // 计算CRC
-                    uint16_t calculated_crc = crc16_ccitt(&buffer[2], crc_len); // 从第3个字节(cmd_id)开始
-                    
-                    // 将计算出的CRC转为小端序
-                    uint16_t calculated_crc_le = (calculated_crc & 0xFF) << 8 | (calculated_crc >> 8);
-                    
-                    // 将接收到的CRC转为大端序用于比较
-                    uint16_t received_crc = recv_frame.crc16;
-                    ROS_INFO("calculated_crc%04X calculated_crc_le%04X received_crc%04X  crc_len%ld",calculated_crc,calculated_crc_le,received_crc,crc_len);
-                    ROS_INFO("[RX] Raw data: %02X %02X %02X %02X %02X %02X %02X", 
-                        buffer[0], buffer[1], buffer[2], buffer[3], 
-                        buffer[4], buffer[5], buffer[6]);
-                    if (recv_frame.header.cmd_id == 0x41 && calculated_crc_le == received_crc) {
-                        std_msgs::UInt8 hp_msg;
-                        hp_msg.data = recv_frame.hp;
-                        hp_pub.publish(hp_msg);
-                        ROS_INFO("[RX] Vision HP: %d CRC_OK=0x%04X", recv_frame.hp, received_crc);
-                    } else {
-                        ROS_WARN("[RX] CRC mismatch or invalid cmd_id: cmd_id=0x%02X calc_crc=0x%04X recv_crc=0x%04X", 
-                                recv_frame.header.cmd_id, calculated_crc_le, received_crc);
-                    }
-                } else {
-                    ROS_WARN("[RX] Incomplete frame: received %zu bytes, expected %zu", 
-                            bytes_read, sizeof(RadarRecvFrame));
                 }
             }
         } catch (serial::IOException &e) {
@@ -186,6 +200,49 @@ void readSerialThread()
             ros::Duration(0.1).sleep();
         }
         usleep(10000);
+    }
+}
+
+// 处理完整帧的函数
+void processFrame(uint8_t* buffer) {
+    RadarRecvFrame recv_frame;
+    memcpy(&recv_frame, buffer, sizeof(RadarRecvFrame));
+    
+    // 验证帧起始位
+    if (recv_frame.header.start1 != 0xFA || recv_frame.header.start2 != 0xFB) {
+        ROS_WARN("[RX] Invalid start bytes in processed frame: 0x%02X 0x%02X", 
+                recv_frame.header.start1, recv_frame.header.start2);
+        return;
+    }
+    
+    // 计算CRC：从cmd_id开始，到hp结束（不包含crc16字段自身）
+    size_t crc_len = sizeof(recv_frame.header.cmd_id) + sizeof(recv_frame.header.data_len) + 
+                     sizeof(recv_frame.hp);
+    
+    // 计算CRC
+    uint16_t calculated_crc = crc16_ccitt(&buffer[2], crc_len); // 从第3个字节(cmd_id)开始
+    
+    // 将计算出的CRC转为小端序
+    uint16_t calculated_crc_le = (calculated_crc & 0xFF) << 8 | (calculated_crc >> 8);
+    
+    // 接收到的CRC
+    uint16_t received_crc = recv_frame.crc16;
+    
+    ROS_INFO("[RX] Raw data: %02X %02X %02X %02X %02X %02X %02X %02X", 
+             buffer[0], buffer[1], buffer[2], buffer[3], 
+             buffer[4], buffer[5], buffer[6], buffer[7]);
+    
+    // ROS_INFO("calculated_crc: 0x%04X, calculated_crc_le: 0x%04X, received_crc: 0x%04X, crc_len: %ld",
+    //          calculated_crc, calculated_crc_le, received_crc, crc_len);
+    
+    if (recv_frame.header.cmd_id == 0x41 && calculated_crc_le == received_crc) {
+        std_msgs::UInt16 hp_msg;
+        hp_msg.data = recv_frame.hp;
+        hp_pub.publish(hp_msg);
+        ROS_INFO("[RX] Vision HP: %d CRC_OK=0x%04X", recv_frame.hp, received_crc);
+    } else {
+        ROS_WARN("[RX] CRC mismatch or invalid cmd_id: cmd_id=0x%02X calc_crc=0x%04X recv_crc=0x%04X", 
+                recv_frame.header.cmd_id, calculated_crc_le, received_crc);
     }
 }
 
@@ -246,7 +303,7 @@ int main(int argc, char **argv)
     // 如果串口成功打开，打印成功信息；否则打印错误信息并退出程序。
 
     // 创建发布器，分别用于发布机器人血量和小陀螺状态
-    hp_pub = nh.advertise<std_msgs::UInt8>("robot_hp", 10, true);
+    hp_pub = nh.advertise<std_msgs::UInt16>("robot_hp", 10, true);  // 修改：使用UInt16发布器
     spin_mode_pub = nh.advertise<std_msgs::UInt8>("spin_mode_status", 10, true);  // 改为UInt8
 
     // 创建订阅器，分别订阅速度指令和小陀螺控制指令，收到消息后会调用对应的回调函数。
