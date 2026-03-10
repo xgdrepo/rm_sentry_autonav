@@ -29,7 +29,7 @@
     name="spawn_model"
     pkg="gazebo_ros"
     type="spawn_model"
-    args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x 0 -y 0 -z 0.3 -R 0 -P 0 -Y 0"
+    args="-urdf -file $(find robot)/urdf/robot.urdf -model robot -x 5.25 -y -3.0 -z 0.2 -R 0 -P 0 -Y 0"
     output="screen" />
 
   <!-- <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen" > -->

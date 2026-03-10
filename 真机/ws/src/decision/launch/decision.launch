@@ -6,8 +6,9 @@
         <param name="team_color" value="red" />  <!-- 设置为红方red --> <!-- 设置为蓝方blue -->
         
         <!-- 血量阈值参数 -->
-        <param name="full_hp_threshold" value="95.0" />
-        <param name="low_hp_threshold" value="10.0" />
+        <param name="full_hp_threshold" value="385.0" />
+        <param name="low_hp_threshold" value="85.0" />
+        <param name="max_hp" value="400" />
         
         <!-- 小陀螺控制参数 -->
         <param name="enable_spin_at_base" value="true" />

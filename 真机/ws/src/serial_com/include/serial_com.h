@@ -20,5 +20,5 @@ uint16_t crc16_ccitt(const uint8_t* data, size_t len);
 void spinModeCallback(const std_msgs::UInt8::ConstPtr &msg);  // 改为UInt8
 void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg);
 void readSerialThread();
-
+void processFrame(uint8_t* buffer);
 #endif // SERIAL_COM_H

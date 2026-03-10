@@ -21,6 +21,7 @@
       <param name="minimumScore" value="0.0"/>  <!-- 避免大空间中的跳变 -->
       <param name="occ_thresh " value="0"/>
       
+      
       <!-- 更新频率控制 -->
       <param name="linearUpdate" value="-1"/>   <!-- 每移动0.5米更新（默认1.0） -->
       <param name="angularUpdate" value="-1"/>  <!-- 每旋转0.3弧度更新（默认0.5） -->
