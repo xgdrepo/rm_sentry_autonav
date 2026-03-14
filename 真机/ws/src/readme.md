@@ -13,6 +13,16 @@ socat -d -d pty,raw,echo=0 pty,raw,echo=0
 修改serial_com.launch中/dev/pts/*参数
 
 血量85
-echo -n -e "\xFA\xFB\x41\x02\x55\x00\x03\xC2" > /dev/pts/*
+echo -n -e "\xFA\xFB\x41\x02\x55\x00" > /dev/pts/5
 血量395
-echo -n -e "\xFA\xFB\x41\x02\x8B\x01\x25\xCB" > /dev/pts/*
+echo -n -e "\xFA\xFB\x41\x02\x8B\x01" > /dev/pts/5
+
+
+killall gzserver gzclient
+
+
+# 安装依赖（如未安装）
+sudo apt-get install ros-noetic-tf2-tools
+
+# 查看当前TF树并保存为PDF
+rosrun tf2_tools view_frames.py

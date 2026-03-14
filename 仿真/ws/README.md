@@ -55,7 +55,7 @@ rosrun teleop_twist_keyboard teleop_twist_keyboard.py cmd_vel:=/cmd_vel1
 
 ### **终端3：建图完成，保存地图**
 ```bash
-rosrun map_server map_saver -f map
+
 ```
 
 ## **导航流程**

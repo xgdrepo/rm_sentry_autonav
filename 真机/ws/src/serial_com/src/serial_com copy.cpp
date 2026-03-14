@@ -1,229 +1,298 @@
-#include "ros/ros.h"  
+#include "ros/ros.h"
 #include "serial_com.h"
-#include <sstream>  
+#include <sstream>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
+#include <std_msgs/UInt16.h>
 #include <string>
 #include <iostream>
-#include <unistd.h>  // for usleep
+#include <unistd.h>
+#include <thread>
+#include <atomic>
+#include <iomanip>
 
-// 定义新的串口数据结构
-#pragma pack(push, 1)  // 确保结构体字节对齐
-struct Serial_Package {
-    uint8_t header;         // 帧头 0xA5
-    float linear_x;         // 线速度x
-    float linear_y;         // 线速度y
-    float angular_z;        // 角速度z
-    uint8_t spin_mode;      // 小陀螺状态：0-关闭，1-开启
-    uint8_t reserved[2];    // 预留字节
-    uint8_t checksum;       // 校验和
+// 原来的数据帧结构体
+#pragma pack(push, 1)
+struct FrameHeader {
+    uint8_t start1 = 0xFA;
+    uint8_t start2 = 0xFB;
+    uint8_t cmd_id;
+    uint8_t data_len;
+};
+
+struct RadarSendFrame {
+    FrameHeader header;
+    float linear_x;
+    float linear_y;
+    float angular_z;
+    uint8_t spin_mode;
+};
+
+struct RadarRecvFrame {
+    FrameHeader header;
+    uint16_t hp;
 };
 #pragma pack(pop)
-
-// 接收数据结构
-struct Received_Package {
-    uint8_t header;         // 帧头 0xA6
-    uint8_t robot_hp;       // 机器人血量
-    uint8_t checksum;       // 校验和
-};
 
 // 全局变量
 serial::Serial sentry_ser;
 std::string cmd_vel_topic;
-std::atomic<bool> spin_mode_enabled(false);  // 使用原子变量确保线程安全
-ros::Publisher hp_pub;           // 血量发布器
-ros::Publisher spin_mode_pub;    // 小陀螺状态发布器
+std::atomic<uint8_t> spin_mode_enabled(0);
+ros::Publisher hp_pub;
+ros::Publisher spin_mode_pub;
 
-// 计算校验和
-uint8_t calculate_checksum(const uint8_t* data, size_t length) {
-    uint8_t checksum = 0;
-    for(size_t i = 0; i < length; i++) {
-        checksum ^= data[i];  // 使用异或校验
+// CDC设备连接函数 - 简化为仅打开连接
+bool connectCDCDevice() {
+    ROS_INFO("Connecting to CDC device...");
+    
+    try {
+        if (sentry_ser.isOpen()) {
+            // CDC设备只需要打开连接即可，不需要发送特定初始化帧
+            ROS_INFO("CDC device connected successfully");
+            
+            // 等待设备稳定（可选）
+            ros::Duration(0.5).sleep();
+            
+            // 清空缓冲区
+            sentry_ser.flush();
+            
+            return true;
+        } else {
+            ROS_ERROR("Serial port not open");
+            return false;
+        }
+    } catch (serial::IOException &e) {
+        ROS_ERROR("Connection failed: %s", e.what());
+        return false;
     }
-    return checksum;
 }
 
 // 小陀螺状态回调函数
-void spinModeCallback(const std_msgs::Bool::ConstPtr& msg) {
-    spin_mode_enabled.store(msg->data);
-    // ROS_INFO("Spin mode %s", msg->data ? "enabled" : "disabled");
+void spinModeCallback(const std_msgs::UInt8::ConstPtr &msg) {
+    uint8_t new_spin_mode = msg->data;
+    spin_mode_enabled.store(new_spin_mode);
+    
+    std_msgs::UInt8 status_msg;
+    status_msg.data = new_spin_mode;
+    spin_mode_pub.publish(status_msg);
+    
+    // ROS_INFO("Spin mode updated: %d", new_spin_mode);
 }
 
-// 接收到订阅的消息后，会进入消息回调函数
-void cmdVelCallback(const geometry_msgs::Twist::ConstPtr& msg) {
-    // receive the msg from cmd_vel
-    // ROS_INFO("Receive a /cmd_vel msg");
-    // ROS_INFO("The linear velocity: x=%f, y=%f, z=%f", 
-    //           msg->linear.x, msg->linear.y, msg->linear.z);
-    // ROS_INFO("The angular velocity: roll=%f, pitch=%f, yaw=%f", 
-    //           msg->angular.x, msg->angular.y, msg->angular.z);
+// 发送函数
+void sendCmdVel(const geometry_msgs::Twist::ConstPtr &msg) {
+    uint8_t current_spin_mode = spin_mode_enabled.load();
     
-    // 创建并填充串口数据包
-    Serial_Package serial_package;
-    serial_package.header = 0xA5;
-    serial_package.linear_x = msg->linear.x;
-    serial_package.linear_y = msg->linear.y;
-    serial_package.angular_z = msg->angular.z;
-    serial_package.spin_mode = spin_mode_enabled.load() ? 1 : 0;
-    serial_package.reserved[0] = 0;
-    serial_package.reserved[1] = 0;
+    RadarSendFrame frame;
+    frame.header.start1 = 0xFA;
+    frame.header.start2 = 0xFB;
+    frame.header.cmd_id = 0x21;
+    frame.header.data_len = sizeof(frame.linear_x) + sizeof(frame.linear_y) + 
+                           sizeof(frame.angular_z) + sizeof(frame.spin_mode);
     
-    // 计算校验和（除了checksum字段本身）
-    serial_package.checksum = calculate_checksum(
-        reinterpret_cast<uint8_t*>(&serial_package), 
-        sizeof(Serial_Package) - 1);
+    frame.linear_x = std::round(msg->linear.x * 1000.0f) / 1000.0f;
+    frame.linear_y = std::round(msg->linear.y * 1000.0f) / 1000.0f;
+    frame.angular_z = std::round(msg->angular.z * 1000.0f) / 1000.0f;
+    frame.spin_mode = current_spin_mode;
     
-    // 发送数据
     try {
-        if(sentry_ser.isOpen()) {
+        if (sentry_ser.isOpen()) {
             sentry_ser.flush();
-            size_t bytes_written = sentry_ser.write(
-                reinterpret_cast<uint8_t*>(&serial_package), 
-                sizeof(Serial_Package));
             
-            if(bytes_written == sizeof(Serial_Package)) {
-                // ROS_INFO("Send data finished! Spin mode: %d", spin_mode_enabled.load());
+            // 打印详细发送信息
+            std::stringstream ss;
+            ss << "[TX] ";
+            const uint8_t* data = reinterpret_cast<const uint8_t*>(&frame);
+            for (size_t i = 0; i < sizeof(RadarSendFrame); i++) {
+                ss << std::hex << std::setw(2) << std::setfill('0') 
+                   << static_cast<int>(data[i]) << " ";
+            }
+            ROS_INFO("%s", ss.str().c_str());
+            
+            size_t bytes_written = sentry_ser.write(data, sizeof(RadarSendFrame));
+            
+            if (bytes_written == sizeof(RadarSendFrame)) {
+                ROS_INFO("[TX] Sent: x=%.3f y=%.3f z=%.3f spin=%d", 
+                        frame.linear_x, frame.linear_y, frame.angular_z, frame.spin_mode);
             } else {
-                ROS_WARN("Only wrote %zu bytes, expected %zu", 
-                         bytes_written, sizeof(Serial_Package));
+                ROS_WARN("[TX] Partial write: %zu/%zu bytes", 
+                        bytes_written, sizeof(RadarSendFrame));
             }
         } else {
             ROS_ERROR("Serial port not open!");
         }
-    } catch (serial::IOException& e) {
+    } catch (serial::IOException &e) {
         ROS_ERROR("Serial write error: %s", e.what());
     }
-    
-    // 发布小陀螺状态
-    std_msgs::Bool spin_msg;
-    spin_msg.data = spin_mode_enabled.load();
-    spin_mode_pub.publish(spin_msg);
 }
 
-// 读取串口数据线程函数
+// 串口读取线程
 void readSerialThread() {
-    // ROS_INFO("Serial read thread started");
+    ROS_INFO("Serial read thread started");
+    uint8_t buffer[256];
+    size_t buffer_index = 0;
     
-    Received_Package recv_pkg;
-    uint8_t buffer[sizeof(Received_Package)];
-    
-    while(ros::ok()) {
+    while (ros::ok()) {
         try {
-            if(sentry_ser.isOpen() && sentry_ser.available()) {
-                // 使用read方法读取指定长度的数据
-                size_t bytes_read = sentry_ser.read(buffer, sizeof(Received_Package));
-                
-                if(bytes_read == sizeof(Received_Package)) {
-                    // 拷贝数据到结构体
-                    memcpy(&recv_pkg, buffer, sizeof(Received_Package));
+            if (sentry_ser.isOpen()) {
+                if (sentry_ser.available() > 0) {
+                    uint8_t temp_buffer[256];
+                    size_t bytes_read = sentry_ser.read(temp_buffer, sizeof(temp_buffer));
                     
-                    // 检查帧头
-                    if(recv_pkg.header == 0xA6) {
-                        // 验证校验和
-                        uint8_t calculated_checksum = calculate_checksum(
-                            buffer, 
-                            sizeof(Received_Package) - 1);
-                        
-                        if(calculated_checksum == recv_pkg.checksum) {
-                            // 发布血量数据
-                            std_msgs::UInt8 hp_msg;
-                            hp_msg.data = recv_pkg.robot_hp;
-                            hp_pub.publish(hp_msg);
-                            
-                            // ROS_INFO("Received HP data: %d", recv_pkg.robot_hp);
-                        } else {
-                            ROS_WARN("Checksum error for received data");
+                    // 打印原始接收数据
+                    if (bytes_read > 0) {
+                        std::stringstream ss;
+                        ss << "[RX Raw] ";
+                        for (size_t i = 0; i < bytes_read; i++) {
+                            ss << std::hex << std::setw(2) << std::setfill('0') 
+                               << static_cast<int>(temp_buffer[i]) << " ";
                         }
-                    } else {
-                        // 如果不是期望的帧头，可能需要进行帧同步
-                        ROS_DEBUG("Unexpected header: 0x%02X", recv_pkg.header);
+                        ROS_INFO("%s", ss.str().c_str());
+                    }
+                    
+                    // 处理接收到的数据
+                    for (size_t i = 0; i < bytes_read; i++) {
+                        buffer[buffer_index++] = temp_buffer[i];
+                        
+                        // 尝试解析帧
+                        if (buffer_index >= sizeof(RadarRecvFrame)) {
+                            // 检查帧头
+                            if (buffer[0] == 0xFA && buffer[1] == 0xFB) {
+                                RadarRecvFrame recv_frame;
+                                memcpy(&recv_frame, buffer, sizeof(RadarRecvFrame));
+                                
+                                if (recv_frame.header.cmd_id == 0x41) {
+                                    std_msgs::UInt16 hp_msg;
+                                    hp_msg.data = recv_frame.hp;
+                                    hp_pub.publish(hp_msg);
+                                    ROS_INFO("[RX] HP received: %d", recv_frame.hp);
+                                    
+                                    // 清除已处理的数据
+                                    buffer_index = 0;
+                                }
+                            } else {
+                                // 帧头不匹配，移动缓冲区
+                                memmove(buffer, buffer + 1, buffer_index - 1);
+                                buffer_index--;
+                            }
+                        }
+                        
+                        // 防止缓冲区溢出
+                        if (buffer_index >= sizeof(buffer)) {
+                            ROS_WARN("Buffer overflow, resetting");
+                            buffer_index = 0;
+                        }
                     }
                 }
             }
-        } catch (serial::IOException& e) {
+            
+            usleep(10000);  // 10ms
+            
+        } catch (serial::IOException &e) {
             ROS_ERROR("Serial read error: %s", e.what());
-            // 短暂休眠后继续
-            ros::Duration(0.1).sleep();
+            ros::Duration(0.5).sleep();  // 出错后等待
         }
-        
-        // 短暂休眠避免占用过多CPU
-        usleep(10000);  // 10ms
     }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     ros::init(argc, argv, "serial_com");
     ros::NodeHandle nh;
     ros::NodeHandle private_nh("~");
     
-    // 获取参数
-    private_nh.param<std::string>("cmd_vel_topic", cmd_vel_topic, "/cmd_vel");
-    std::string serial_port;
-    private_nh.param<std::string>("serial_port", serial_port, "/dev/ttyUSB0");
+    // 设置日志级别为DEBUG，便于调试
+    if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, 
+        ros::console::levels::Debug)) {
+        ros::console::notifyLoggerLevelsChanged();
+    }
     
-    // ROS_INFO("Using serial port: %s", serial_port.c_str());
-    // ROS_INFO("Subscribing to topic: %s", cmd_vel_topic.c_str());
+    // 获取参数
+    private_nh.param<std::string>("cmd_vel_topic", cmd_vel_topic, "/cmd_vel1");
+    std::string serial_port;
+    private_nh.param<std::string>("serial_port", serial_port, "/dev/ttyACM0");
+    
+    ROS_INFO("Using serial port: %s", serial_port.c_str());
+    ROS_INFO("Subscribing to topic: %s", cmd_vel_topic.c_str());
     
     // 设置串口
     try {
         sentry_ser.setPort(serial_port);
         sentry_ser.setBaudrate(115200);
-        serial::Timeout to = serial::Timeout::simpleTimeout(1000);
+        
+        // 设置超时
+        serial::Timeout to = serial::Timeout(
+            serial::Timeout::max(),           // inter_byte_timeout
+            1000,                             // read_timeout_constant
+            100,                              // read_timeout_multiplier
+            1000,                             // write_timeout_constant
+            100                               // write_timeout_multiplier
+        );
         sentry_ser.setTimeout(to);
+        
+        // 打开串口（这是CDC连接的主要部分）
         sentry_ser.open();
         
-        // 配置串口参数（可选）
+        // 设置串口参数
         sentry_ser.setParity(serial::parity_none);
         sentry_ser.setStopbits(serial::stopbits_one);
         sentry_ser.setBytesize(serial::eightbits);
         
-    } catch (serial::IOException& e) {
-        ROS_ERROR_STREAM("Unable to open port " << serial_port << ": " << e.what());
-        return -1;
-    } catch (serial::SerialException& e) {
-        ROS_ERROR_STREAM("Serial exception: " << e.what());
-        return -1;
-    } catch (...) {
-        ROS_ERROR_STREAM("Unknown error opening serial port");
+        // 设置流控制
+        sentry_ser.setFlowcontrol(serial::flowcontrol_none);
+        
+    } catch (const std::exception& e) {
+        ROS_ERROR_STREAM("Failed to open serial port: " << e.what());
         return -1;
     }
     
-    if(sentry_ser.isOpen()) {
+    if (sentry_ser.isOpen()) {
         ROS_INFO_STREAM("Serial Port " << serial_port << " opened successfully");
+        
+        // 简化的CDC连接（仅确认连接）
+        if (!connectCDCDevice()) {
+            ROS_WARN("CDC connection check failed, but continuing...");
+        }
+        
+        // 等待设备就绪
+        ros::Duration(0.5).sleep();
+        
+        // 清空缓冲区
+        sentry_ser.flush();
+        
     } else {
         ROS_ERROR_STREAM("Failed to open serial port");
         return -1;
     }
     
     // 创建发布器
-    hp_pub = nh.advertise<std_msgs::UInt8>("robot_hp", 10, true);
-    spin_mode_pub = nh.advertise<std_msgs::Bool>("spin_mode_status", 10, true);
+    hp_pub = nh.advertise<std_msgs::UInt16>("robot_hp", 10, true);
+    spin_mode_pub = nh.advertise<std_msgs::UInt8>("spin_mode_status", 10, true);
     
     // 创建订阅器
     ros::Subscriber cmd_vel_sub = nh.subscribe<geometry_msgs::Twist>(
-        cmd_vel_topic, 10, cmdVelCallback);
-    ros::Subscriber spin_sub = nh.subscribe<std_msgs::Bool>(
+        cmd_vel_topic, 10, sendCmdVel);
+    ros::Subscriber spin_sub = nh.subscribe<std_msgs::UInt8>(
         "spin_mode_cmd", 10, spinModeCallback);
     
-    // ROS_INFO("Sentry serial node initialized");
+    ROS_INFO("Sentry serial node initialized");
     
     // 启动串口读取线程
     std::thread serial_read_thread(readSerialThread);
     
-    // ROS主循环
-    ros::MultiThreadedSpinner spinner(2);  // 使用多线程spinner
+    // 启动ROS
+    ros::MultiThreadedSpinner spinner(2);  // 使用2个线程
     spinner.spin();
     
     // 等待线程结束
-    if(serial_read_thread.joinable()) {
+    if (serial_read_thread.joinable()) {
         serial_read_thread.join();
     }
     
     // 关闭串口
-    if(sentry_ser.isOpen()) {
+    if (sentry_ser.isOpen()) {
         sentry_ser.close();
-        // ROS_INFO("Serial port closed");
+        ROS_INFO("Serial port closed");
     }
     
     return 0;

@@ -1,14 +1,12 @@
 #include <ros/ros.h>
-#include <std_msgs/UInt8.h>
-#include <std_msgs/UInt16.h>  // 新增UInt16头文件
+#include <std_msgs/UInt16.h>  // 修改为UInt16
+#include <std_msgs/UInt8.h>  // 修改为UInt16
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <tf/tf.h>
 #include <cmath>
 #include <mutex>
-#include <algorithm> // 用于std::transform
-#include <type_traits> // 用于std::is_same
 
 class DecisionNode {
 private:
@@ -23,8 +21,8 @@ private:
     ros::Publisher spin_pub_;
     
     // 参数
-    double full_hp_threshold_;      // 满血阈值百分比
-    double low_hp_threshold_;       // 低血阈值百分比（10%）
+    double full_hp_threshold_;      // 满血阈值
+    double low_hp_threshold_;       // 低血阈值（10%）
     bool enable_spin_at_base_;      // 是否在基地开启小陀螺
     bool enable_stop_spin_when_low_hp_; // 低血时是否停止小陀螺
     std::string team_color_;        // 队伍颜色：red 或 blue
@@ -42,8 +40,8 @@ private:
     } team_poses_;
     
     // 状态变量
-    uint16_t current_hp_;
-    uint16_t max_hp_;  // 保持为uint16_t
+    uint16_t current_hp_;  // 修改为uint16_t
+    uint16_t max_hp_;      // 修改为uint16_t
     geometry_msgs::Pose current_pose_;
     std::mutex pose_mutex_;
     std::mutex hp_mutex_;
@@ -70,7 +68,7 @@ private:
 public:
     DecisionNode() : 
         current_hp_(0),
-        max_hp_(400),  // 最大血量400
+        max_hp_(400),  // 修改为400，匹配血量范围
         is_at_home_(false),
         is_at_supply_(false),
         spin_enabled_(false),
@@ -80,34 +78,13 @@ public:
         
         // 初始化参数
         ros::NodeHandle private_nh("~");
-        
-        // 读取百分比阈值（百分比值）
         private_nh.param("full_hp_threshold", full_hp_threshold_, 95.0); // 95%以上视为满血
         private_nh.param("low_hp_threshold", low_hp_threshold_, 10.0);   // 10%以下视为低血
-        
-        // 读取布尔参数
         private_nh.param("enable_spin_at_base", enable_spin_at_base_, true);
         private_nh.param("enable_stop_spin_when_low_hp", enable_stop_spin_when_low_hp_, true);
-        
-        // 读取容差参数
         private_nh.param("position_tolerance", position_tolerance_, 0.1); // 位置容差0.1米
         private_nh.param("orientation_tolerance", orientation_tolerance_, 0.1); // 角度容差0.1弧度
-        
-        // 读取队伍颜色
         private_nh.param("team_color", team_color_, team_color_);
-        
-        // 读取最大血量 - 特殊处理uint16_t
-        int max_hp_temp = 400;  // 默认值
-        if (private_nh.getParam("max_hp", max_hp_temp)) {
-            if (max_hp_temp >= 0 && max_hp_temp <= 65535) { // uint16_t 的有效范围
-                max_hp_ = static_cast<uint16_t>(max_hp_temp);
-            } else {
-                ROS_WARN("max_hp value %d out of range (0-65535), using default 400", max_hp_temp);
-                max_hp_ = 400;
-            }
-        } else {
-            max_hp_ = 400; // 使用默认值
-        }
         
         // 将队伍颜色转换为小写
         std::transform(team_color_.begin(), team_color_.end(), team_color_.begin(), ::tolower);
@@ -124,7 +101,7 @@ public:
         // 根据队伍颜色设置目标点
         initializeTargetPoses();
         
-        // 初始化订阅器
+        // 初始化订阅器 - 修改为UInt16
         hp_sub_ = nh_.subscribe<std_msgs::UInt16>("/robot_hp", 10, 
             &DecisionNode::hpCallback, this);
         pose_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10,
@@ -132,10 +109,9 @@ public:
         
         // 初始化发布器
         goal_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, true);
-        spin_pub_ = nh_.advertise<std_msgs::UInt8>("/spin_mode_cmd", 10, true);
+        spin_pub_ = nh_.advertise<std_msgs::UInt8>("/spin_mode_cmd", 10, true);  // 修改为UInt8
         
         // ROS_INFO("Decision Node initialized");
-        // ROS_INFO("Max HP: %u", max_hp_);
         // ROS_INFO("Team: %s", team_color_.c_str());
         // ROS_INFO("Full HP threshold: %.1f%%", full_hp_threshold_);
         // ROS_INFO("Low HP threshold: %.1f%%", low_hp_threshold_);
@@ -192,12 +168,12 @@ public:
         }
     }
     
-    // 血量回调函数
+    // 血量回调函数 - 修改参数类型为UInt16
     void hpCallback(const std_msgs::UInt16::ConstPtr& msg) {
         // std::lock_guard<std::mutex> lock(hp_mutex_);
         current_hp_ = msg->data;
 
-        // ROS_INFO("Current HP: %u (Max: %u)", current_hp_, max_hp_);
+        // ROS_INFO("Current HP: %d", current_hp_);
         
         // 决策逻辑
         makeDecision();
@@ -253,29 +229,67 @@ public:
         // 检查位置
         double dx = current.position.x - target.position.x;
         double dy = current.position.y - target.position.y;
+        // double dz = current.position.z - target.position.z;
         double distance = sqrt(dx*dx + dy*dy);
         
+        // 检查朝向
+        // double current_yaw = tf::getYaw(current.orientation);
+        // double target_yaw = tf::getYaw(target.orientation);
+        // double yaw_diff = fabs(current_yaw - target_yaw);
+        
+        // 归一化角度差到 [0, PI]
+        // if (yaw_diff > M_PI) {
+        //     yaw_diff = 2 * M_PI - yaw_diff;
+        // }
+        
+        // return (distance < position_tolerance_) && (yaw_diff < orientation_tolerance_);
         return (distance < position_tolerance_);
+    }
+    
+    // 判断两个目标是否相同
+    bool isSameGoal(const geometry_msgs::PoseStamped& goal1, const geometry_msgs::PoseStamped& goal2) {
+        if (goal1.header.frame_id != goal2.header.frame_id) {
+            return false;
+        }
+        
+        double dx = goal1.pose.position.x - goal2.pose.position.x;
+        double dy = goal1.pose.position.y - goal2.pose.position.y;
+        double dz = goal1.pose.position.z - goal2.pose.position.z;
+        double distance = sqrt(dx*dx + dy*dy + dz*dz);
+        
+        double yaw1 = tf::getYaw(goal1.pose.orientation);
+        double yaw2 = tf::getYaw(goal2.pose.orientation);
+        double yaw_diff = fabs(yaw1 - yaw2);
+        if (yaw_diff > M_PI) {
+            yaw_diff = 2 * M_PI - yaw_diff;
+        }
+        
+        return (distance < 0.01) && (yaw_diff < 0.01); // 更小的容差来判断是否相同
     }
     
     // 决策逻辑
     void makeDecision() {
+        // std::lock_guard<std::mutex> lock1(hp_mutex_);
+        // std::lock_guard<std::mutex> lock2(pose_mutex_);
+        
         double hp_percentage = (static_cast<double>(current_hp_) / max_hp_) * 100.0;
         
-        // ROS_INFO("HP percentage: %.1f%% (HP: %u/%u), At home: %s, At supply: %s", 
-        //          hp_percentage, current_hp_, max_hp_, 
-        //          is_at_home_ ? "true" : "false", is_at_supply_ ? "true" : "false");
+        // ROS_INFO("HP percentage: %.1f%%, At home: %s, At supply: %s", 
+        //          hp_percentage, is_at_home_ ? "true" : "false", is_at_supply_ ? "true" : "false");
         
         // 情况1：血量满（>95%）且不在增益区
         if (hp_percentage >= full_hp_threshold_) {
+            // ROS_INFO("----------------------", );
             if (!is_at_home_) {
                 // 检查是否需要发送新目标
                 if (current_goal_type_ != GOAL_HOME) {
-                    // ROS_INFO("HP is full (%.1f%%). Sending to %s gain zone...", 
-                    //         hp_percentage, team_color_.c_str());
+                    ROS_INFO("HP is full (%.1f%%). Sending to %s gain zone...", 
+                             hp_percentage, team_color_.c_str());
                     sendGoal(home_pose_, GOAL_HOME);
                     current_goal_type_ = GOAL_HOME;
                     goal_sent_ = true;
+                } else {
+                    // ROS_INFO("Already heading to gain zone");
                 }
             } else {
                 // 如果在增益区，清空当前目标
@@ -287,24 +301,30 @@ public:
             // 如果在增益区且允许开启小陀螺
             if (is_at_home_) {
                 // ROS_INFO("At %s gain zone with full HP. Enabling spin mode...", team_color_.c_str());
-                enableSpinMode(1);  // 1表示开启
+                enableSpinMode(1);  // 改为1表示开启
+                // spin_enabled_ = true;
             }
         }
         // 情况2：血量低（<10%）
         else if (hp_percentage <= low_hp_threshold_) {
             // 如果低血时应该停止小陀螺
-            // ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
-            enableSpinMode(0);  // 0表示关闭
+
+            ROS_INFO("HP is low (%.1f%%). Stopping spin mode...", hp_percentage);
+            enableSpinMode(0);  // 改为0表示关闭
+            // spin_enabled_ = false;
+
             
             // 如果不在补给区
             if (!is_at_supply_) {
                 // 检查是否需要发送新目标
                 if (current_goal_type_ != GOAL_SUPPLY) {
                     // ROS_INFO("HP is low (%.1f%%). Sending to %s supply zone...", 
-                    //         hp_percentage, team_color_.c_str());
+                            //  hp_percentage, team_color_.c_str());
                     sendGoal(supply_pose_, GOAL_SUPPLY);
                     current_goal_type_ = GOAL_SUPPLY;
                     goal_sent_ = true;
+                } else {
+                    // ROS_INFO("Already heading to supply zone");
                 }
             } else {
                 // 如果在补给区，清空当前目标
@@ -316,10 +336,11 @@ public:
         // 情况3：中等血量
         else {
             // 可以添加其他决策逻辑
+            // ROS_INFO("HP is at medium level (%.1f%%)", hp_percentage);
         }
     }
     
-    // 发送目标点
+    // 修改sendGoal函数
     void sendGoal(const geometry_msgs::PoseStamped& goal, GoalType goal_type) {
         // 只在实际发送时才更新时间戳
         geometry_msgs::PoseStamped new_goal = goal;
@@ -329,9 +350,17 @@ public:
         
         // 更新当前目标
         current_goal_ = new_goal;
+        
+        // ROS_INFO("Goal sent: type=%d, frame=%s, stamp=%.6f, pos=(%.2f, %.2f, %.2f)", 
+                // goal_type,
+                // new_goal.header.frame_id.c_str(),
+                // new_goal.header.stamp.toSec(),
+                // new_goal.pose.position.x, 
+                // new_goal.pose.position.y,
+                // new_goal.pose.position.z);
     }
     
-    // 控制小陀螺模式
+    // 控制小陀螺模式 - 修改消息类型为UInt8
     void enableSpinMode(uint8_t enable) {
         std_msgs::UInt8 msg;
         msg.data = enable;  // 1:开启小陀螺, 0:关闭小陀螺

@@ -2,7 +2,7 @@
 <launch>
     <param name="/use_sim_time" value="true" />
     <!-- 红方 red 蓝方 blue -->
-    <arg name="team_color" default="blue" />
+    <arg name="team_color" default="red" />
 
     <!-- 根据队伍颜色定义初始位置参数 -->
     <arg name="initial_pose_x" value="-5.25" if="$(eval team_color == 'red')" />
@@ -104,11 +104,11 @@
         <remap from="cmd_vel1" to="/cmd_vel1"/>
     </node>
 
-     <!-- 决策节点 -->
+    <!-- 决策节点 -->
     <node name="decision_node" pkg="decision" type="decision_node" output="screen">
         <param name="team_color" value="$(arg team_color)" />
         <param name="full_hp_threshold" value="95.0" />
-        <param name="low_hp_threshold" value="10.0" />
+        <param name="low_hp_threshold" value="25.0" />
         <param name="enable_spin_at_base" value="true" />
         <param name="enable_stop_spin_when_low_hp" value="true" />
         <param name="position_tolerance" value="0.1" />
@@ -117,9 +117,9 @@
 
     <!-- 串口通信节点 -->
     <node pkg="serial_com" type="serial_com" name="serial_com" output="screen">
-        <!-- 参数设置 -->
+        <!-- 参数设置 /dev/ttyACM0  /dev/pts/4-->
         <param name="cmd_vel_topic" type="string" value="/cmd_vel1" />
-        <param name="serial_port" type="string" value="/dev/pts/3" />
+        <param name="serial_port" type="string" value="/dev/pts/4" />
         
         <!-- ROS参数服务器设置 -->
         <rosparam>

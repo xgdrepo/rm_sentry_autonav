@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>robot</name>
+  <version>0.1.0</version>
+  <description>Robot package with point cloud transform node</description>
+  <maintainer email="user@example.com">user</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_sensor_msgs</depend>
+  <depend>pcl_ros</depend>
+</package>

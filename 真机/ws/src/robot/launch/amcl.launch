@@ -49,7 +49,7 @@
         <param name="update_min_a" value="-1"/>   <!-- ~5.7度旋转才更新 -->
         
         <!-- 坐标系 -->
-        <param name="odom_frame_id" value="base_link"/>
+        <param name="odom_frame_id" value="odom"/>
         <param name="base_frame_id" value="base_link"/>
         <param name="global_frame_id" value="map"/>
         

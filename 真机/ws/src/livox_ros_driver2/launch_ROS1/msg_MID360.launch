@@ -3,10 +3,7 @@
 	<!--user configure parameters for ros start-->
 	<arg name="lvx_file_path" default="livox_test.lvx"/>
 	<arg name="bd_list" default="100000000000000"/>
-	<!--xfer_format 0  Livox pointcloud2(PointXYZRTLT) pointcloud format 
-	1  Livox customized pointcloud format 
-	2  Standard pointcloud2 (pcl :: PointXYZI) pointcloud format in the PCL library (just for ROS)-->
-	<arg name="xfer_format" default="2"/>  	
+	<arg name="xfer_format" default="2"/>
 	<arg name="multi_topic" default="0"/>
 	<arg name="data_src" default="0"/>
 	<arg name="publish_freq" default="10.0"/>
@@ -15,8 +12,8 @@
 	<arg name="rosbag_enable" default="false"/>
 	<arg name="cmdline_arg" default="$(arg bd_list)"/>
 	<arg name="msg_frame_id" default="lidar_link"/>
-	<arg name="lidar_bag" default="false"/>
-	<arg name="imu_bag" default="false"/>
+	<arg name="lidar_bag" default="true"/>
+	<arg name="imu_bag" default="true"/>
 	<!--user configure parameters for ros end--> 
 
 	<param name="xfer_format" value="$(arg xfer_format)"/>

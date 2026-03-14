@@ -5,13 +5,8 @@
 class SimpleImuToOdom {
 private:
     ros::NodeHandle nh_;
-    ros::NodeHandle private_nh_;
     ros::Subscriber imu_sub_;
     ros::Publisher odom_pub_;
-    
-    // 话题名称参数
-    std::string imu_topic_;
-    std::string odom_topic_;
     
     // 当前速度和角速度
     double vx_, vy_, wz_;
@@ -20,26 +15,16 @@ private:
     ros::Time last_publish_time_;
     
 public:
-    SimpleImuToOdom() : 
-        private_nh_("~"),
-        vx_(0.0), vy_(0.0), wz_(0.0) {
+    SimpleImuToOdom() : vx_(0.0), vy_(0.0), wz_(0.0) {
+        // 订阅IMU
+        imu_sub_ = nh_.subscribe("/imu/data", 10, &SimpleImuToOdom::imuCallback, this);
         
-        // 从参数服务器获取话题名称（带默认值）
-        private_nh_.param<std::string>("imu_topic", imu_topic_, "/imu/data");
-        private_nh_.param<std::string>("odom_topic", odom_topic_, "/odom1");
-        
-        // 订阅IMU（使用参数化的topic名称）
-        imu_sub_ = nh_.subscribe(imu_topic_, 10, &SimpleImuToOdom::imuCallback, this);
-        
-        // 发布Odom（使用参数化的topic名称）
-        odom_pub_ = nh_.advertise<nav_msgs::Odometry>(odom_topic_, 10);
+        // 发布Odom
+        odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/odom1", 10);
         
         last_publish_time_ = ros::Time::now();
         
-        ROS_INFO("简单IMU转Odom节点启动");
-        ROS_INFO("订阅IMU话题: %s", imu_topic_.c_str());
-        ROS_INFO("发布Odom话题: %s", odom_topic_.c_str());
-        ROS_INFO("刷新间隔: 0.1秒");
+        ROS_INFO("简单IMU转Odom节点启动，0.1秒刷新一次速度信息");
     }
     
     void imuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
@@ -81,23 +66,19 @@ public:
         odom_msg.header.stamp = ros::Time::now();
         odom_msg.header.frame_id = "odom";
         odom_msg.child_frame_id = "base_link";
-
-        odom_msg.pose.pose.position.x = 0;
-        odom_msg.pose.pose.position.y = 0;
-        odom_msg.pose.pose.position.z = 0.0;
-        // 设置速度
-        odom_msg.twist.twist.linear.x = 0;
-        odom_msg.twist.twist.linear.y = 0;
+        
+        // 设置速度 - 重点关注的部分
+        odom_msg.twist.twist.linear.x = vx_;
+        odom_msg.twist.twist.linear.y = vy_;
         odom_msg.twist.twist.linear.z = 0.0;
         odom_msg.twist.twist.angular.x = 0.0;
         odom_msg.twist.twist.angular.y = 0.0;
-        odom_msg.twist.twist.angular.z = 2;
+        odom_msg.twist.twist.angular.z = wz_;
         
         // 发布消息
         odom_pub_.publish(odom_msg);
         
-        ROS_DEBUG("发布到 %s: vx=%.3f, vy=%.3f, wz=%.3f", 
-                  odom_topic_.c_str(), vx_, vy_, wz_);
+        ROS_DEBUG("发布: vx=%.3f, vy=%.3f, wz=%.3f", vx_, vy_, wz_);
     }
     
     void spin() {
