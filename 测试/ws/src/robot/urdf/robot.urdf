@@ -342,6 +342,7 @@
           <broadcastTF>1</broadcastTF>
       </plugin>
   </gazebo>
+
   <gazebo reference="lidar_link">
 
       <!-- 发布lidar数据 -->

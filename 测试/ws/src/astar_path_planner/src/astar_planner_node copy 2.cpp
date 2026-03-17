@@ -24,7 +24,7 @@ struct Node {
 
 class AStarPlanner {
 private:
-
+    ros::NodeHandle nh_;
     ros::Subscriber amcl_sub_;
     ros::Subscriber goal_sub_;
     ros::Subscriber map_sub_;
@@ -32,11 +32,13 @@ private:
     
     geometry_msgs::PoseStamped current_pose_;
     geometry_msgs::PoseStamped goal_pose_;
+    geometry_msgs::PoseStamped last_goal_pose_;  // 添加：保存上一个目标点
     nav_msgs::OccupancyGrid::ConstPtr map_;
     
     bool pose_received_;
     bool goal_received_;
     bool map_received_;
+    bool goal_changed_;  // 添加：目标点是否改变标志
     
     double robot_radius_;
     double resolution_;
@@ -55,39 +57,36 @@ private:
     std::mutex map_mutex_;
     
     ros::Timer planning_timer_;
+    ros::Timer pose_timer_;
     
 public:
     AStarPlanner() : 
         pose_received_(false),
         goal_received_(false),
         map_received_(false),
+        goal_changed_(false),  // 初始化目标点改变标志
         robot_radius_(0.5),
         resolution_(0.05),
         pose_update_rate_(10.0),
-        planning_rate_(5.0) {  // 默认5Hz
-            
-        ros::NodeHandle nh_("~");
+        planning_rate_(2.0) {
+        
         // 从参数服务器读取参数
         nh_.param("robot_radius", robot_radius_, 0.5);
         nh_.param("amcl_topic", amcl_topic_, std::string("/amcl_pose"));
-        nh_.param("goal_topic", goal_topic_, std::string("/move_base_simple/goal"));
-        nh_.param("map_topic", map_topic_, std::string("/map1"));
+        nh_.param("goal_topic", goal_topic_, std::string("/goal"));
+        nh_.param("map_topic", map_topic_, std::string("/map"));
         nh_.param("path_topic", path_topic_, std::string("/path"));
-        nh_.param("planning_rate", planning_rate_, 5.0);
+        nh_.param("pose_update_rate", pose_update_rate_, 10.0);
+        nh_.param("planning_rate", planning_rate_, 2.0);
         
-        // nh_.param("~robot_radius", robot_radius_, 0.5);
-        // nh_.param("~amcl_topic", amcl_topic_, std::string("/amcl_pose"));
-        // nh_.param("~goal_topic", goal_topic_, std::string("/move_base_simple/goal"));
-        // nh_.param("~map_topic", map_topic_, std::string("/map1"));
-        // nh_.param("~path_topic", path_topic_, std::string("/path"));
-        // nh_.param("~planning_rate", planning_rate_, 5.0);
-        // ROS_INFO("AStar Planner Parameters:");
-        // ROS_INFO("  amcl_topic: %s", amcl_topic_.c_str());
-        // ROS_INFO("  goal_topic: %s", goal_topic_.c_str());
-        // ROS_INFO("  map_topic: %s", map_topic_.c_str());
-        // ROS_INFO("  path_topic: %s", path_topic_.c_str());
-        // ROS_INFO("  planning_rate: %.1f Hz", planning_rate_);
-        // ROS_INFO("  robot_radius: %.2f m", robot_radius_);
+        ROS_INFO("AStar Planner Parameters:");
+        ROS_INFO("  amcl_topic: %s", amcl_topic_.c_str());
+        ROS_INFO("  goal_topic: %s", goal_topic_.c_str());
+        ROS_INFO("  map_topic: %s", map_topic_.c_str());
+        ROS_INFO("  path_topic: %s", path_topic_.c_str());
+        ROS_INFO("  pose_update_rate: %.1f Hz", pose_update_rate_);
+        ROS_INFO("  planning_rate: %.1f Hz", planning_rate_);
+        ROS_INFO("  robot_radius: %.2f m", robot_radius_);
         
         // 订阅器
         amcl_sub_ = nh_.subscribe(amcl_topic_, 10, &AStarPlanner::amclCallback, this);
@@ -98,11 +97,22 @@ public:
         path_pub_ = nh_.advertise<nav_msgs::Path>(path_topic_, 1);
         
         // 计算定时器周期
+        double pose_update_period = 1.0 / pose_update_rate_;
         double planning_period = 1.0 / planning_rate_;
         
-        // 定时器：路径规划（固定频率）
+        // 定时器：位置数据更新
+        pose_timer_ = nh_.createTimer(ros::Duration(pose_update_period), 
+            boost::bind(&AStarPlanner::poseUpdate, this));
+        
+        // 定时器：路径规划
         planning_timer_ = nh_.createTimer(ros::Duration(planning_period),
             boost::bind(&AStarPlanner::planningCallback, this));
+    }
+    
+    void poseUpdate() {
+        // 保持位置更新频率
+        std::lock_guard<std::mutex> lock(pose_mutex_);
+        // 这里可以添加额外的处理
     }
     
     void amclCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
@@ -114,9 +124,29 @@ public:
     
     void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
         std::lock_guard<std::mutex> lock(goal_mutex_);
+        
+        // 检查目标点是否改变
+        if (!goal_received_) {
+            // 第一次收到目标点
+            goal_changed_ = true;
+        } else {
+            // 比较新旧目标点
+            double dx = msg->pose.position.x - last_goal_pose_.pose.position.x;
+            double dy = msg->pose.position.y - last_goal_pose_.pose.position.y;
+            double distance = std::sqrt(dx*dx + dy*dy);
+            
+            // 如果距离大于阈值（例如0.1米），则认为目标点改变
+            if (distance > 0.1) {
+                goal_changed_ = true;
+                ROS_INFO("Goal changed! New goal at (%.2f, %.2f)", 
+                         msg->pose.position.x, msg->pose.position.y);
+            }
+        }
+        
+        // 保存当前目标点
         goal_pose_ = *msg;
+        last_goal_pose_ = *msg;  // 保存上一次的目标点
         goal_received_ = true;
-        // ROS_INFO("11");
     }
     
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) {
@@ -145,15 +175,10 @@ public:
     }
     
     bool isCellFree(int x, int y) {
-        if (!map_received_) {
-            // ROS_INFO("!map_received_");
-            return false;}
-        if (x < 0 || x >= width_ || y < 0 || y >= height_) 
-        {
-            // ROS_INFO("x < 0 || x >= width_ || y < 0 || y >= height_");
-            return false;}
-        // ROS_INFO("robot_radius_:%.3f",robot_radius_);
+        if (!map_received_) return false;
+        if (x < 0 || x >= width_ || y < 0 || y >= height_) return false;
         
+        // 检查机器人半径内的碰撞
         int check_radius = std::ceil(robot_radius_ / resolution_);
         
         for (int dx = -check_radius; dx <= check_radius; ++dx) {
@@ -162,13 +187,11 @@ public:
                 int ny = y + dy;
                 
                 if (nx < 0 || nx >= width_ || ny < 0 || ny >= height_) {
-                    // ROS_INFO("nx < 0 || nx >= width_ || ny < 0 || ny >= height_");
                     return false;
                 }
                 
                 int index = ny * width_ + nx;
                 if (map_->data[index] > 50 || map_->data[index] == -1) {
-                    // ROS_INFO("data:%d,index:%d",map_->data[index],index);
                     return false;
                 }
             }
@@ -178,12 +201,14 @@ public:
     }
     
     double heuristic(int x1, int y1, int x2, int y2) {
+        // 欧几里得距离
         return std::sqrt(std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2));
     }
     
     std::vector<Node*> getNeighbors(Node* node) {
         std::vector<Node*> neighbors;
         
+        // 8方向移动
         int dx[] = {-1, 0, 1, -1, 1, -1, 0, 1};
         int dy[] = {-1, -1, -1, 0, 0, 1, 1, 1};
         
@@ -202,22 +227,10 @@ public:
     std::vector<geometry_msgs::PoseStamped> findPath(int start_x, int start_y, int goal_x, int goal_y) {
         std::vector<geometry_msgs::PoseStamped> path;
         
-        if (!isCellFree(start_x, start_y)) {
-            ROS_INFO("%d,%d",start_x,start_y);
-            ROS_WARN("Start position is not free!");
-            if(!isCellFree(goal_x, goal_y)){
-            ROS_WARN("goal position is not free!");
-            }
-            
+        if (!isCellFree(start_x, start_y) || !isCellFree(goal_x, goal_y)) {
+            ROS_WARN("Start or goal position is not free!");
             return path;
         }
-        // if (!isCellFree(goal_x, goal_y)) {
-
-        //     ROS_WARN("goal position is not free!");
-            
-            
-        //     return path;
-        // }
         
         auto cmp = [](Node* a, Node* b) { return a->f > b->f; };
         std::priority_queue<Node*, std::vector<Node*>, decltype(cmp)> open_list(cmp);
@@ -239,7 +252,9 @@ public:
             
             closed_list[current->x][current->y] = true;
             
+            // 到达目标点
             if (current->x == goal_x && current->y == goal_y) {
+                // 回溯路径
                 while (current != nullptr) {
                     geometry_msgs::PoseStamped pose;
                     mapToWorld(current->x, current->y, pose.pose.position.x, pose.pose.position.y);
@@ -272,20 +287,17 @@ public:
             }
         }
         
+        // 清理内存
         while (!open_list.empty()) {
             delete open_list.top();
             open_list.pop();
         }
-        // ROS_INFO("path==================");
         
         return path;
     }
     
     void planningCallback() {
-        // 检查必要数据是否已接收
         if (!pose_received_ || !goal_received_ || !map_received_) {
-            // ROS_WARN_THROTTLE(5.0, "Waiting for necessary data: pose=%d, goal=%d, map=%d", 
-            //                   pose_received_, goal_received_, map_received_);
             return;
         }
         
@@ -293,7 +305,12 @@ public:
         std::lock_guard<std::mutex> lock2(goal_mutex_);
         std::lock_guard<std::mutex> lock3(map_mutex_);
         
-        // 转换坐标
+        // 检查目标点是否改变，如果没改变则直接返回
+        if (!goal_changed_) {
+            // ROS_DEBUG("Goal not changed, skipping path planning.");
+            return;
+        }
+        
         int start_x, start_y, goal_x, goal_y;
         
         if (!worldToMap(current_pose_.pose.position.x, 
@@ -302,17 +319,13 @@ public:
             !worldToMap(goal_pose_.pose.position.x,
                        goal_pose_.pose.position.y,
                        goal_x, goal_y)) {
-            // ROS_WARN_THROTTLE(2.0, "Failed to convert world coordinates to map coordinates!");
+            ROS_WARN("Failed to convert world coordinates to map coordinates!");
             return;
         }
-        // ROS_INFO("-------------");
-        // 规划路径
+        
         std::vector<geometry_msgs::PoseStamped> path_poses = findPath(start_x, start_y, goal_x, goal_y);
         
-        // 发布路径
         if (!path_poses.empty()) {
-        // ROS_INFO("----path_poses.empty---------");
-
             nav_msgs::Path path;
             path.header.stamp = ros::Time::now();
             path.header.frame_id = "map";
@@ -320,9 +333,14 @@ public:
             
             path_pub_.publish(path);
             
-            // ROS_DEBUG("Path published with %d waypoints", (int)path_poses.size());
+            // 重置目标点改变标志
+            goal_changed_ = false;
+            
+            ROS_INFO("Path published with %d waypoints", (int)path_poses.size());
         } else {
-            // ROS_WARN_THROTTLE(2.0, "Failed to find a valid path!");
+            ROS_WARN("Failed to find a valid path!");
+            // 即使没找到路径，也重置标志，避免重复尝试
+            goal_changed_ = false;
         }
     }
 };

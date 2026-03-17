@@ -316,8 +316,8 @@ void GeneralCommandHandler::HandleDetectionData(uint32_t handle, uint16_t lidar_
     return;
   }
 
-  LOG_INFO("Handle detection data, handle:{}, dev_type:{}, sn:{}, cmd_port:{}",
-      handle, detection_data->dev_type, detection_data->sn, detection_data->cmd_port);
+  // LOG_INFO("Handle detection data, handle:{}, dev_type:{}, sn:{}, cmd_port:{}",
+  //     handle, detection_data->dev_type, detection_data->sn, detection_data->cmd_port);
 
   LoggerManager::GetInstance().AddDevice(handle, detection_data);
   DebugPointCloudManager::GetInstance().AddDevice(handle, detection_data);

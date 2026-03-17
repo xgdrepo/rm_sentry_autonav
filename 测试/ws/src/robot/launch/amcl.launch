@@ -45,8 +45,8 @@
         <param name="laser_lambda_short" value="0.1"/>
         
         <!-- 更新阈值 -->
-        <param name="update_min_d" value="-1"/>  <!-- 5cm移动才更新 -->
-        <param name="update_min_a" value="-1"/>   <!-- ~5.7度旋转才更新 -->
+        <param name="update_min_d" value="0.05"/>  <!-- 5cm移动才更新 -->
+        <param name="update_min_a" value="0.1"/>   <!-- ~5.7度旋转才更新 -->
         
         <!-- 坐标系 -->
         <param name="odom_frame_id" value="odom"/>

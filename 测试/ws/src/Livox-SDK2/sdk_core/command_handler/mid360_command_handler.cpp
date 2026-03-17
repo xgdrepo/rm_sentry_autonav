@@ -64,7 +64,7 @@ void Mid360CommandHandler::Handle(const uint32_t handle, uint16_t lidar_port, co
     LOG_INFO(" Receive Ack: Id {} Seq {}", command.packet.cmd_id, command.packet.seq_num);
     OnCommandAck(handle, command);
   } else if (command.packet.cmd_type == kCommandTypeCmd) {
-    LOG_INFO(" Receive Command: Id {} Seq {}", command.packet.cmd_id, command.packet.seq_num);
+    // LOG_INFO(" Receive Command: Id {} Seq {}", command.packet.cmd_id, command.packet.seq_num);
     OnCommandCmd(handle, lidar_port, command);
   }
 }

@@ -7,7 +7,7 @@
 
     <!-- base_link和lidar_link坐标变换 -->
     <node name="tf_base_lidar" pkg="tf" type="static_transform_publisher"
-          args="0 0 0 0 0 0 /base_link /lidar_link 40" />
+          args="-0.046164 -0.20002 0.16926  0 3.1415 0 /base_link /lidar_link 40" />
     <!-- map和odom坐标变换 -->
     <!-- <node name="static_odom_tf" pkg="tf" type="static_transform_publisher"
       args="0 0 0 0 0 0 base_link odom 40" /> -->
@@ -23,7 +23,7 @@
             target_frame: lidar_link
             transform_tolerance: 0.001
             min_height: -1
-            max_height: 0.2
+            max_height: 0.3
             angle_min: -3.1415926
             angle_max: 3.1415926
             angle_increment: 0.005
