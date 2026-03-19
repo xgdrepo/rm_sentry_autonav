@@ -5,7 +5,7 @@
     <!-- <node name="tf_base_lidar" pkg="tf" type="static_transform_publisher"
           args="-0.046164 -0.20002 0.16926  0 3.1415 0 /base_link /lidar_link 40" /> -->
     <node name="tf_base_lidar" pkg="tf" type="static_transform_publisher"
-          args="0 0 0 0 0 0 /base_link /lidar_link 40" />
+          args="-0.046164 -0.20002 0 0 3.1415 0 /base_link /lidar_link 40" />
     <!-- 静态栅格地图服务 -->
     <node name="map_server" pkg="map_server" type="map_server" args="$(find robot)/map/map.yaml" />
     <!-- rviz显示 -->
@@ -69,17 +69,17 @@
         <param name="planning_rate" value="5" />
         
         <!-- 机器人参数 -->
-        <param name="robot_radius" value="0.3" />
+        <param name="robot_radius" value="0.4" />
     </node>
 
     <!-- 路径跟随节点 -->
     <node name="path_follower" pkg="path_follower" type="path_follower" output="screen">
         <!-- 控制参数 -->
         <param name="control_frequency" value="10.0"/>   <!-- 控制频率(Hz) -->
-        <param name="control_gain" value="0.6"/>        <!-- 控制增益 3-->
+        <param name="control_gain" value="2"/>        <!-- 控制增益 3-->
         
         <!-- 路径跟踪参数 -->
-        <param name="target_distance" value="0.7"/>     <!-- 目标点距离(m)，增加距离使控制更平滑 0.1-->
+        <param name="target_distance" value="0.5"/>     <!-- 目标点距离(m)，增加距离使控制更平滑 0.1-->
         <param name="stop_threshold" value="0.05"/>     <!-- 停止阈值(m) -->
         
         <!-- 速度限制 -->
