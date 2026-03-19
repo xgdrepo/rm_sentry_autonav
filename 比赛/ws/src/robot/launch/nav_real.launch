@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
     <param name="/use_sim_time" value="true" />
-    <!-- 红方 red 蓝方 blue -->
-    <arg name="team_color" default="blue" />
+    <!-- 红方 red 蓝方 blue (2026赛季3v3 红 蓝 蓝 红)-->
+    <arg name="team_color" default="red" />
 
     <!-- 根据队伍颜色定义初始位置参数 -->
     <arg name="initial_pose_x" value="-5.25" if="$(eval team_color == 'red')" />
@@ -79,7 +79,7 @@
         <param name="control_gain" value="2"/>        <!-- 控制增益 3-->
         
         <!-- 路径跟踪参数 -->
-        <param name="target_distance" value="0.2"/>     <!-- 目标点距离(m)，增加距离使控制更平滑 0.1-->
+        <param name="target_distance" value="0.5"/>     <!-- 目标点距离(m)，增加距离使控制更平滑 0.1-->
         <param name="stop_threshold" value="0.05"/>     <!-- 停止阈值(m) -->
         
         <!-- 速度限制 -->
@@ -108,7 +108,7 @@
 
     <!-- 串口通信节点 -->
     <node pkg="serial_com" type="serial_com" name="serial_com" output="screen">
-        <!-- 参数设置 /dev/ttyACM0  /dev/pts/4-->
+        <!-- 参数设置 /dev/ttyACM0  /dev/pts/4  /dev/ttyUSB0-->
         <param name="cmd_vel_topic" type="string" value="/cmd_vel1" />
         <param name="serial_port" type="string" value="/dev/ttyUSB0" />
         
