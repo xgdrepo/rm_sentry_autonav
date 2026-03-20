@@ -1,0 +1,20 @@
+<launch>
+
+    <!-- 启动一个空的Gazebo世界，并设置一些参数 -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="paused" value="false"/>
+        <arg name="use_sim_time" value="true"/>
+        <arg name="gui" value="true"/>
+        <arg name="verbose" value="false"/>
+        <arg name="debug" value="false"/>
+    </include>
+
+  <!-- gazebo机器人初始位姿 -->
+  <node name="spawn_model" pkg="gazebo_ros" type="spawn_model"
+        args="-urdf -file $(find robot)/urdf/robot.urdf -model robot 
+              -x 0 -y 0 -z 0.2
+              -R 0 -P 0 -Y 0.0"
+        output="screen" />
+
+
+</launch>

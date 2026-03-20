@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- 动态地图生成器节点 -->
+    <node name="dynamic_map_generator" 
+          pkg="dynamic_map_generator" 
+          type="dynamic_map_generator_node" 
+          output="screen">
+        
+        <!-- 地图参数 -->
+        <param name="map_resolution" value="0.05" />
+        <param name="map_width" value="800" />      <!-- 40米 (800 * 0.05) -->
+        <param name="map_height" value="800" />     <!-- 40米 (800 * 0.05) -->
+        <param name="map_origin_x" value="-20.0" /> <!-- 左下角在(-20, -20) -->
+        <param name="map_origin_y" value="-20.0" />
+        
+        <!-- 坐标系设置 -->
+        <param name="map_frame" value="map" />
+        <param name="odom_frame" value="odom" />
+        <param name="base_frame" value="base_link" />
+        <param name="lidar_frame" value="lidar_link" />
+        
+        <!-- 静态地图话题 -->
+        <param name="static_map_topic" value="/map" />
+        
+    </node>
+    
+    <!-- RViz可视化 (可选) -->
+    <!--
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dynamic_map_generator)/config/dynamic_map.rviz" />
+    -->
+    
+</launch>

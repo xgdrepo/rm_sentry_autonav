@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- 决策节点 -->
+    <node name="decision_node" pkg="decision" type="decision_node" output="screen">
+        <!-- 队伍颜色：red 或 blue -->
+        <param name="team_color" value="red" />  <!-- 设置为红方red --> <!-- 设置为蓝方blue -->
+        
+        <!-- 血量阈值参数 -->
+        <param name="full_hp_threshold" value="95.0" />
+        <param name="low_hp_threshold" value="10.0" />
+        
+        <!-- 小陀螺控制参数 -->
+        <param name="enable_spin_at_base" value="true" />
+        <param name="enable_stop_spin_when_low_hp" value="true" />
+        
+        <!-- 容差参数 -->
+        <param name="position_tolerance" value="0.1" />
+        <param name="orientation_tolerance" value="0.1" />
+    </node>
+</launch>

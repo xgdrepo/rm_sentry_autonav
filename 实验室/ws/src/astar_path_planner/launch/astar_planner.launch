@@ -1,0 +1,18 @@
+<launch>
+    <!-- 启动A*路径规划节点 -->
+    <node name="astar_planner" pkg="astar_path_planner" type="astar_planner_node" output="screen">
+        <!-- 话题参数 -->
+        <param name="amcl_topic" value="/amcl_pose" />
+        <param name="goal_topic" value="/move_base_simple/goal" />
+        <param name="map_topic" value="/map1" />
+        <param name="path_topic" value="/path" />
+        
+        <!-- 频率参数 单位：hz-->
+        <param name="pose_update_rate" value="10" />
+        <param name="planning_rate" value="5" />
+        
+        <!-- 机器人参数 -->
+        <param name="robot_radius" value="0.45" />
+    </node>
+</launch>
+

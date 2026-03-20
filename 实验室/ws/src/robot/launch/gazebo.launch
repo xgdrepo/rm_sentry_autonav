@@ -1,0 +1,21 @@
+<launch>
+
+  <!-- gazebo仿真场地 -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+      <arg name="world_name" value="$(find robot)/world/arena.world"/>
+      <arg name="paused" value="false"/>
+      <arg name="use_sim_time" value="true"/>
+  </include>
+    <!-- base_link和lidar_link坐标变换 -->
+    <node name="tf_base_lidar" pkg="tf" type="static_transform_publisher"
+          args="-0.046164 -0.20002 0.16926  0 3.1415 0 /base_link /lidar_link 40" />
+
+  <!-- gazebo机器人初始位姿 -->
+  <node name="spawn_model" pkg="gazebo_ros" type="spawn_model"
+        args="-urdf -file $(find robot)/urdf/robot.urdf -model robot 
+              -x -5.25 -y 3.0 -z 0.2 
+              -R 0 -P 0 -Y 0.0"
+        output="screen" />
+
+
+</launch>
